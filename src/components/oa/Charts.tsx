@@ -5,6 +5,8 @@ import type { RankedVariant } from "@/engine";
 import type { MetricPoint } from "@/lib/metrics";
 import { MetricBars } from "@/components/chart/MetricBars";
 import { Rankings } from "@/components/Rankings";
+import type { ValueFormat } from "@/components/chart/RankingColumns";
+import { money } from "@/lib/metrics";
 import { ScoreScatter, useScatterView } from "@/components/chart/ScoreScatter";
 import { ParetoChart } from "@/components/chart/ParetoChart";
 import { ChartSettings } from "@/components/chart/ChartSettings";
@@ -17,6 +19,14 @@ function bestPoints(pts: MetricPoint[], lowerIsBetter = false): MetricPoint[] {
   const best = new Map<string, MetricPoint>();
   for (const p of pts) { const cur = best.get(p.r.model.id); if (!cur || (lowerIsBetter ? p.r.score < cur.r.score : p.r.score > cur.r.score)) best.set(p.r.model.id, p); }
   return [...best.values()];
+}
+
+/** Bar labels in the benchmark's own unit. Percent keeps one decimal inside the bar and puts % on the axis. */
+function unitFormats(unit: string): ValueFormat | undefined {
+  if (unit === "percent") return { value: (v) => v.toFixed(1), axis: (v) => `${v}%` };
+  if (unit === "usd") return { value: money, axis: money };
+  if (unit === "seconds") { const sec = (v: number) => `${v < 10 ? v.toFixed(2) : v < 100 ? v.toFixed(1) : Math.round(v)}s`; return { value: sec, axis: (v) => `${v}s` }; }
+  return undefined;
 }
 
 /** Bars show every model (AA style); the settings picker can hide some. */
@@ -82,12 +92,13 @@ export function MetricCard({ chart, title, desc, pts: allPts, labs, height = 420
 }
 
 /** A single benchmark's leaderboard as Analysis columns, best result per model first. */
-export function BenchmarkBars({ title, desc, higherIsBetter, pts: allPts, labs, limit = 24, anchor, more }: { title: string; desc?: ReactNode; unit: string; higherIsBetter: boolean; pts: MetricPoint[]; labs: Lab[]; height?: number; limit?: number; anchor?: string; more?: string | { href: string; label: string } }) {
+export function BenchmarkBars({ title, desc, unit, higherIsBetter, pts: allPts, labs, limit = 24, anchor, more }: { title: string; desc?: ReactNode; unit: string; higherIsBetter: boolean; pts: MetricPoint[]; labs: Lab[]; height?: number; limit?: number; anchor?: string; more?: string | { href: string; label: string } }) {
   const [mode, setMode] = useState<"all" | "best">("best");
   const [view, setView] = useScatterView(`bench-${anchor ?? anchorOf(title)}`, "bars");
   const sorted = useMemo(() => (mode === "best" ? bestPoints(allPts, !higherIsBetter) : allPts).slice().sort((a, b) => (higherIsBetter ? b.x - a.x : a.x - b.x)), [mode, allPts, higherIsBetter]);
   const vis = useAllBars(sorted);
   const rows = useMemo(() => vis.points.map((p, i) => ({ ...p.r, rank: i + 1 })), [vis.points]);
-  return <Rankings ranked={rows} labs={labs} limit={limit} more={more} showEffort={mode === "all"} anchor={anchor ?? anchorOf(title)} title={<Heading title={title} desc={desc} />}
+  const format = useMemo(() => unitFormats(unit), [unit]);
+  return <Rankings ranked={rows} labs={labs} limit={limit} more={more} format={format} showEffort={mode === "all"} anchor={anchor ?? anchorOf(title)} title={<Heading title={title} desc={desc} />}
     actions={<ChartSettings label={title} anchor={anchor ?? anchorOf(title)} mode={mode} onChange={setMode} view={view} onView={setView} {...vis.picker} />} />;
 }

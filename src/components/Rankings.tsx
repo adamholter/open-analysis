@@ -6,12 +6,14 @@ import type { RankedVariant } from "@/engine";
 import { variantLabel } from "./chart/ParetoChart";
 import { markColor, useChartPalette } from "./chart/echarts";
 import { ChartLink } from "./chart/ChartLink";
-import { RankingColumns } from "./chart/RankingColumns";
+import { RankingColumns, type ValueFormat } from "./chart/RankingColumns";
 
 /** Dense horizontal bars, color by lab, rows slide to their new position when the order changes. */
 type RankingsProps = { ranked: RankedVariant[]; labs: Lab[]; limit?: number; showEffort?: boolean; onSelect?: (r: RankedVariant | null) => void; selected?: string | null; title?: ReactNode; actions?: ReactNode; anchor?: string;
   /** Open Analysis: shown after "Top N of M" when the chart can't fit every model, e.g. a link to the full table. */
-  more?: string | { href: string; label: string } };
+  more?: string | { href: string; label: string };
+  /** Open Analysis: label/axis formatting for non-index units. */
+  format?: ValueFormat };
 
 /** Analysis-style themes draw the leaderboard as vertical columns; every other theme keeps the dense rows. */
 export function Rankings(props: RankingsProps) {
@@ -19,7 +21,7 @@ export function Rankings(props: RankingsProps) {
   return columns ? <RankingsColumns {...props} /> : <RankingsRows {...props} />;
 }
 
-function RankingsColumns({ ranked, labs, limit = 30, onSelect, selected, showEffort = true, title, actions, anchor, more }: RankingsProps) {
+function RankingsColumns({ ranked, labs, limit = 30, onSelect, selected, showEffort = true, title, actions, anchor, more, format }: RankingsProps) {
   // Open Analysis: no "Show all" and no scrolling. The chart draws the best models that fit and says how many that is.
   const [shown, setShown] = useState<number>();
   const rows = ranked.slice(0, limit);
@@ -27,7 +29,7 @@ function RankingsColumns({ ranked, labs, limit = 30, onSelect, selected, showEff
   const head = <div id={anchor} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 mb-3 min-h-8 scroll-mt-20"><div className="min-w-0">{title}</div><div className="flex items-center gap-1 ml-auto">{actions}{anchor && <ChartLink id={anchor} name="Rankings" />}<ChartExport name="Rankings" getSvg={() => svg.current()} getRows={() => ranked.map((r) => ({ rank: r.rank, model: r.model.name, effort: showEffort ? r.variant.effort : "best", score: +r.score.toFixed(2), lab: r.model.labId, cost_per_task_usd: r.costUsd ?? null, speed_toks: r.speed ?? null, coverage: r.coverage }))} /></div></div>;
   if (!rows.length) return <>{head}<p className="cap py-6">No model has enough measured data for this index. Loosen a requirement, lower a weight, or reduce strictness.</p></>;
   const noun = showEffort ? "variants" : "models";
-  return <>{head}<RankingColumns rows={rows} labs={labs} showEffort={showEffort} selected={selected} onSelect={onSelect} getRef={(f) => { svg.current = f; }} onShown={setShown} />
+  return <>{head}<RankingColumns rows={rows} labs={labs} showEffort={showEffort} selected={selected} onSelect={onSelect} getRef={(f) => { svg.current = f; }} onShown={setShown} format={format} />
     {shown != null && shown < ranked.length && <p className="cap mt-3">Top {shown} of {ranked.length} {noun}{more ? " · " : null}{typeof more === "object" ? <a href={more.href} className="underline">{more.label}</a> : more}</p>}</>;
 }
 

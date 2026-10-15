@@ -123,12 +123,24 @@ export function barSlotsThatFit(width: number, slotMin: number, scale = 1) {
   return Math.max(1, Math.floor((width - (BAR_MARGIN.left + BAR_MARGIN.right) * scale) / slotMin));
 }
 
-/** Top of a bar axis: the data max plus label headroom, rounded up to a whole tick (1, 2, 5 × 10ⁿ) so no stray "740" sits beside "700". */
-export function barAxisMax(max: number, headroom = 0.08) {
-  if (max <= 0) return 1;
-  const target = max * (1 + headroom), raw = target / 5, mag = 10 ** Math.floor(Math.log10(raw)), f = raw / mag;
-  const step = (f < 1.5 ? 1 : f < 3.5 ? 2 : f < 7.5 ? 5 : 10) * mag;
-  return Number((Math.ceil(target / step) * step).toPrecision(12));
+/**
+ * A bar axis with whole-number ticks: data range plus label headroom, rounded to a 1/2/2.5/5 × 10ⁿ step that gives
+ * 5–8 intervals. Min, max and interval are all set so the last tick lands exactly on the top (no stray "16" after "15").
+ */
+export function barAxis(min: number, max: number, headroom = 0.08) {
+  const lo = Math.min(0, min), hi = Math.max(0, max);
+  if (hi === 0 && lo === 0) return { min: 0, max: 1, interval: 0.2 };
+  const top = hi * (1 + headroom), bottom = lo * (1 + headroom), span = top - bottom;
+  let best: { min: number; max: number; interval: number } | undefined;
+  for (let k = Math.floor(Math.log10(span / 8)) - 1; k <= Math.floor(Math.log10(span)); k++) for (const m of [1, 2, 2.5, 5]) {
+    const interval = Number((m * 10 ** k).toPrecision(12));
+    const out = { min: lo < 0 ? Math.floor(bottom / interval) * interval : 0, max: hi > 0 ? Math.ceil(top / interval) * interval : 0, interval };
+    const ticks = (out.max - out.min) / interval;
+    if (ticks < 5 || ticks > 8) continue;
+    if (!best || out.max - out.min < best.max - best.min - 1e-9 || (Math.abs(out.max - out.min - (best.max - best.min)) < 1e-9 && interval > best.interval)) best = out;
+  }
+  const fix = (v: number) => Number(v.toPrecision(12));
+  return best ? { min: fix(best.min), max: fix(best.max), interval: best.interval } : { min: lo < 0 ? bottom : 0, max: top, interval: span / 5 };
 }
 
 export function barsOption({ bars, labs, xName, formatValue, pal, highlight, labelScale, width, height = 400 }: {
@@ -142,6 +154,7 @@ export function barsOption({ bars, labs, xName, formatValue, pal, highlight, lab
   const layout = barLayout(bars.map((p) => ({ modelId: p.r.model.id, modelName: p.r.model.name, effort: p.r.variant.effort, label: chartLabel(p.r), point: p })));
   const grouped = layout.effortLabels.some(Boolean);
   const fmt = compact(formatValue), fontSize = 11.5 * fontScale, maxBar = (bars.length <= 6 ? 144 : 64) * markSize(pal);
+  const values = bars.map(value).filter(Number.isFinite), axis = barAxis(Math.min(0, ...values), Math.max(0, ...values));
   const fit = width === undefined ? "above" : barLabelFit(bars.map((p) => fmt(value(p))), fontSize, layout.entries.length, width - 52 * t - 30, maxBar);
   const inside = pal.style?.barLabels === "inside" && fit === "inside";
   // Bars shorter than their value (y max is at least the top bar, so this errs short) show it above.
@@ -155,7 +168,7 @@ export function barsOption({ bars, labs, xName, formatValue, pal, highlight, lab
       { type: "category", data: layout.modelLabels.map((label, i) => { const p = layout.entries[i]?.point, featuredModel = p && bars.some((bar) => bar.r.model.id === p.r.model.id && featured.has(bar.r.variant.id)); return on && label && p && (hl.has(p.r.model.id) || featuredModel) ? { value: label, textStyle: { color: pal.ink, fontWeight: 600 } } : label; }), position: "bottom", offset: grouped ? 24 * fontScale : 0, axisLabel: { rotate: 45, interval: 0, hideOverlap: false, margin: 10, fontSize: 12 * fontScale, color: pal.ink2, fontFamily: pal.fonts?.sans ?? "var(--font-inter), Inter, sans-serif", width: 160 * fontScale, overflow: "truncate" }, axisTick: { show: false }, axisLine: { show: false } },
     ],
     // Open Analysis: headroom so labels above the tallest bars never reach the axis title.
-    yAxis: { type: "value", ...(fit !== "inside" ? { max: (e: { max: number }) => barAxisMax(e.max) } : {}), name: xName, nameTextStyle: { color: pal.grey, fontSize: 11 * t, align: "left", padding: [0, 0, 0, -30 * t] }, axisLabel: { formatter: (v: number) => compact(formatValue)(v) } },
+    yAxis: { type: "value", ...axis, name: xName, nameTextStyle: { color: pal.grey, fontSize: 11 * t, align: "left", padding: [0, 0, 0, -30 * t] }, axisLabel: { formatter: (v: number) => compact(formatValue)(v) } },
     tooltip: { trigger: "item", confine: true, formatter: (p: unknown) => { const d = (p as { data?: { point?: ScatterPoint } }).data?.point; return d ? `<div style="font-weight:600">${escapeHtml(chartLabel(d.r))}</div><div style="font-family:var(--font-jetbrains);margin-top:4px">${escapeHtml(formatValue(value(d)))} · index ${d.r.score.toFixed(1)}</div>` : ""; } },
     series: [{
       type: "bar", id: "bars", barMaxWidth: maxBar, barCategoryGap: "24%",

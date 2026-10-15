@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ScatterPoint } from "./scatter-option";
-import { barLayout, barSlotMin, barSlotsThatFit, defaultBarModels, filterBarModels, barLabelFit, selectBars } from "./bars-option";
+import { barAxis, barLayout, barSlotMin, barSlotsThatFit, defaultBarModels, filterBarModels, barLabelFit, selectBars } from "./bars-option";
 
 const point = (model: string, effort: string, score: number, metric: number): ScatterPoint => ({
   x: metric,
@@ -93,4 +93,17 @@ describe("barLabelFit", () => {
     expect(barLabelFit(["87.0s", "320s"], 10, 30, 1200, 28)).toBe("above");
     expect(barLabelFit(["87.0s"], 10, 60, 330, 28)).toBe("vertical");
   });
+});
+
+it("picks whole-number axes whose last tick is the top, with 5-8 intervals", () => {
+  for (const [min, max] of [[0, 14], [0, 69], [0, 684], [0, 32.9], [0, 1561], [-90, 60], [0, 0.0016]]) {
+    const a = barAxis(min, max), ticks = (a.max - a.min) / a.interval;
+    expect(a.max).toBeGreaterThanOrEqual(max);
+    expect(a.min).toBeLessThanOrEqual(min);
+    expect(ticks).toBeGreaterThanOrEqual(5);
+    expect(ticks).toBeLessThanOrEqual(8);
+    expect(Math.abs(ticks - Math.round(ticks))).toBeLessThan(1e-9);
+  }
+  expect(barAxis(0, 14)).toMatchObject({ max: 16, interval: 2 });
+  expect(barAxis(0, 684)).toMatchObject({ max: 800, interval: 100 });
 });

@@ -349,12 +349,15 @@ html[data-theme="dark"] body { background: #0A0A0A; }
 .oa-chips button[aria-selected="true"], .oa-chips button[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--bone); }
 .oa-grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
 @media (max-width: 1080px) { .oa-grid2 { grid-template-columns: minmax(0, 1fr); } }
+/* Priors' dark-page panel rule (12px radius, tighter padding, negative margin on phones) must not make Analysis dark differ from light. */
+.page-root[data-family="aa"][data-dark] .chart-panel { border-radius: var(--page-radius); padding: 28px 32px 30px; margin: 0; }
+@media (max-width: 639px) { .page-root[data-family="aa"][data-dark] .chart-panel { padding: 18px 14px 20px; margin: 0; } }
 .page-root[data-family="aa"] .oa-small.chart-panel { padding: 20px 22px 18px; }
 .oa-small h2 { font-size: 18px !important; }
 .oa-small h2::before { display: none !important; }
 .oa-table { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
 .oa-table th { text-align: left; font-weight: 500; color: var(--grey); font-size: 12px; padding: 8px 10px; border-bottom: 1px solid var(--hair); white-space: nowrap; }
-.oa-table td { padding: 9px 10px; border-bottom: 1px solid var(--hair-2); vertical-align: middle; }
+.oa-table td { padding: 9px 10px; border-bottom: 1px solid var(--hair-2); vertical-align: middle; white-space: nowrap; }
 .oa-table .num { text-align: right; }
 .oa-table tbody tr:hover td { background: var(--hair-2); }
 .oa-table a { text-decoration: none; }
