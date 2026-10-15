@@ -1,7 +1,8 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { gunzipSync } from "node:zlib";
-import { computeIndex, selectVariants, type IndexConfig, type RankedVariant } from "@/engine";
+import type { IndexConfig } from "@/engine";
+import { themeById } from "@/lib/page-presets";
 import type { Benchmark, Snapshot } from "@/data/types";
 import openIndex from "../../open-index.json";
 
@@ -22,65 +23,9 @@ export function openIndexConfig(): IndexConfig {
   };
 }
 
-export interface IndexRow {
-  rank: number;
-  modelId: string;
-  variantId: string;
-  name: string;
-  effort: string;
-  labId: string;
-  labName: string;
-  color: string;
-  score: number;
-  coverage: number;
-  releaseDate?: string;
-  costPerTask?: number;
-  speed?: number;
-  latency?: number;
-}
-
-const LAB_COLORS: Record<string, string> = {
-  anthropic: "#cc785c", openai: "#1f1f1f", google: "#34A853", meta: "#0089f4", xai: "#736cd3", spacexai: "#736cd3", deepseek: "#2243e6", alibaba: "#ff7018",
-  moonshot: "#047AFE", mistral: "#f32e02", zhipu: "#1c7ff8", minimax: "#EB3568", xiaomi: "#ff6900", "thinking-machines": "#676767", nvidia: "#76b900",
-  stepfun: "#00b8ad", inception: "#021B30", microsoft: "#0078D5", cohere: "#D18EE2", "ant-group": "#4fb5ff", tencent: "#3c8bff", cognition: "#1B818E", cursor: "#505050", other: "#909090",
-};
+/** Lab colors from the Analysis theme (AA creator colors), same as the charts. */
+const LAB_COLORS = themeById("aa")!.labColors!;
 export const labColor = (labId: string) => LAB_COLORS[labId] ?? LAB_COLORS.other;
-
-function metricByModel(snap: Snapshot, benchmarkId: string) {
-  const out = new Map<string, number>();
-  const variantModel = new Map(snap.variants.map((v) => [v.id, v.modelId]));
-  for (const o of snap.observations) if (o.benchmarkId === benchmarkId) {
-    const m = variantModel.get(o.variantId);
-    if (m && !out.has(m)) out.set(m, o.value);
-  }
-  return out;
-}
-
-/** Mean measured cost per task across the index's benchmarks that publish run costs (needs two). */
-function costPerTask(snap: Snapshot, variantId: string, benchmarkIds: Set<string>): number | undefined {
-  const costs = snap.observations.filter((o) => o.variantId === variantId && benchmarkIds.has(o.benchmarkId) && o.costUsd != null && o.costUsd > 0).map((o) => o.costUsd!);
-  if (costs.length < 2) return undefined;
-  return Math.exp(costs.reduce((s, c) => s + Math.log(c), 0) / costs.length);
-}
-
-let indexCache: { best: IndexRow[]; all: IndexRow[] } | null = null;
-export function openIndexRows() {
-  if (indexCache) return indexCache;
-  const snap = snapshot();
-  const result = computeIndex(snap, openIndexConfig());
-  const labs = new Map(snap.labs.map((l) => [l.id, l.name]));
-  const tps = metricByModel(snap, "openrouter-tps");
-  const latency = metricByModel(snap, "openrouter-latency");
-  const ids = new Set(openIndex.benchmarks.map((b) => b.id));
-  const row = (r: RankedVariant): IndexRow => ({
-    rank: r.rank, modelId: r.model.id, variantId: r.variant.id, name: r.model.name, effort: r.variant.effort,
-    labId: r.model.labId, labName: labs.get(r.model.labId) ?? r.model.labId, color: labColor(r.model.labId),
-    score: r.score, coverage: r.measuredShare, releaseDate: r.model.releaseDate,
-    costPerTask: costPerTask(snap, r.variant.id, ids), speed: tps.get(r.model.id), latency: latency.get(r.model.id),
-  });
-  indexCache = { best: selectVariants(result.ranked, "best").map(row), all: selectVariants(result.ranked, "all").map(row) };
-  return indexCache;
-}
 
 export function benchmarkById(id: string): Benchmark | undefined {
   return snapshot().benchmarks.find((b) => b.id === id);
@@ -119,7 +64,4 @@ export function benchmarkRows(benchmarkId: string): BenchmarkRow[] {
   return [...best.values()].sort((x, y) => (b.higherIsBetter ? y.value - x.value : x.value - y.value));
 }
 
-export function sourceName(b: Benchmark): string {
-  if (b.community) return b.maintainer ?? "Community";
-  try { return new URL(b.url).hostname.replace(/^www\./, ""); } catch { return b.sourceId; }
-}
+

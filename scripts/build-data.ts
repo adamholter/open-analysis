@@ -31,9 +31,13 @@ export function withoutSources(snap: Snapshot, exclude: string[]): Snapshot {
   const keep = new Set(benchmarks.map((b) => b.id));
   const observations = snap.observations.filter((o) => keep.has(o.benchmarkId));
   const usedVariants = new Set(observations.map((o) => o.variantId));
+  // AA model metadata (open weights, params, prices) rides on its source lineage; drop it only with AA.
+  const stripAA = drop.has("aa");
+  const isAA = (s: { url: string }) => s.url.includes("artificialanalysis.ai");
   const variants = snap.variants.filter((v) => usedVariants.has(v.id)).map((v) => {
-    const lineage = (v.sourceModels ?? []).filter((s) => !s.url.includes("artificialanalysis.ai"));
-    const source = v.sourceModel && !v.sourceModel.url.includes("artificialanalysis.ai") ? v.sourceModel : lineage[0];
+    if (!stripAA) return v;
+    const lineage = (v.sourceModels ?? []).filter((s) => !isAA(s));
+    const source = v.sourceModel && !isAA(v.sourceModel) ? v.sourceModel : lineage[0];
     return { ...v, sourceModel: source, sourceModels: lineage.length ? lineage : undefined };
   });
   const usedModels = new Set(variants.map((v) => v.modelId));

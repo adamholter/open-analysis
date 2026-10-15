@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Bars } from "@/components/Chart";
-import { OPEN_INDEX, benchmarkById, benchmarkRows, snapshot, sourceName } from "@/lib/data";
-import { effortLabel, usd } from "@/lib/format";
+import { BenchmarkBars } from "@/components/oa/Charts";
+import { OPEN_INDEX, benchmarkById, benchmarkRows, labColor, snapshot } from "@/lib/data";
+import { benchmarkPoints, labs, publisherOf } from "@/lib/views";
 
 export function generateStaticParams() {
   return snapshot().benchmarks.filter((b) => benchmarkRows(b.id).length).map((b) => ({ id: b.id }));
@@ -14,7 +14,8 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   return { title: benchmarkById(id)?.name ?? "Benchmark" };
 }
 
-const UNIT: Record<string, string> = { percent: "%", usd: " USD", seconds: "s", elo: " Elo", score: "", count: "" };
+const UNIT: Record<string, string> = { percent: "%", usd: " USD", seconds: "s", elo: "", score: "", count: "" };
+const usd = (v?: number) => (v == null ? "–" : `$${v < 0.01 ? v.toFixed(4) : v < 1 ? v.toFixed(3) : v.toFixed(2)}`);
 
 export default async function BenchmarkPage({ params }: { params: Promise<{ id: string }> }) {
   const id = decodeURIComponent((await params).id);
@@ -25,40 +26,43 @@ export default async function BenchmarkPage({ params }: { params: Promise<{ id: 
   const weight = OPEN_INDEX.benchmarks.find((x) => x.id === id);
   const total = OPEN_INDEX.benchmarks.reduce((s, x) => s + x.weight, 0);
   return (
-    <main>
-      <section>
-        <p className="cap"><Link href="/benchmarks">Benchmarks</Link> / {b.category}</p>
-        <h1>{b.name}{b.community && <span className="badge">community</span>}</h1>
-        <p className="lede">{b.description}</p>
-        <div className="stat-row">
-          <div className="stat"><b>{rows.length}</b><span>models</span></div>
-          <div className="stat"><b>{weight ? `${Math.round((100 * weight.weight) / total)}%` : "–"}</b><span>Open Index weight</span></div>
-          <div className="stat"><b>{b.lastUpdated ?? "–"}</b><span>last updated</span></div>
-          <div className="stat"><b><a href={b.url} rel="noreferrer">{sourceName(b)}</a></b><span>{b.community ? "maintainer" : "source"}</span></div>
-        </div>
-      </section>
-      <section className="panel">
-        <header><h2 className="mark">{b.name}</h2></header>
-        <p className="sub">{b.higherIsBetter ? "Higher is better" : "Lower is better"}. Best effort per model, top 25.{b.costNote ? ` ${b.costNote}` : ""}</p>
-        <Bars points={rows.slice(0, 25).map((r) => ({ id: r.modelId, name: r.name, label: `${r.name}${effortLabel(r.effort) ? ` (${r.effort})` : ""}`, color: r.color, y: r.value, href: `/models/${r.modelId}` }))} digits={digits} unit={UNIT[b.unit]} lowerIsBetter={!b.higherIsBetter} />
-      </section>
-      <section className="panel scroll">
-        <table className="data">
-          <thead><tr><th>#</th><th>Model</th><th>Effort</th><th className="num">Score</th><th className="num">Cost / task</th><th>Harness</th></tr></thead>
-          <tbody>
-            {rows.map((r, i) => (
-              <tr key={r.modelId}>
-                <td>{i + 1}</td>
-                <td><span className="dot" style={{ background: r.color }} /><Link href={`/models/${r.modelId}`}>{r.name}</Link></td>
-                <td>{effortLabel(r.effort) || "–"}</td>
-                <td className="num"><a href={r.sourceUrl} rel="noreferrer">{r.value.toFixed(digits)}{UNIT[b.unit]}</a></td>
-                <td className="num">{usd(r.costUsd)}</td>
-                <td>{r.harness ?? "–"}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </section>
-    </main>
+    <div className="oa-body no-side">
+      <main className="oa-main">
+        <section className="oa-hero">
+          <p className="oa-crumb"><Link href="/benchmarks">Benchmarks</Link> / {b.category}</p>
+          <h1 className="mt-2">{b.name}{b.community && <span className="oa-badge">community</span>}</h1>
+          <p className="oa-lede mt-3">{b.description}</p>
+          <div className="oa-stats">
+            <div><b>{rows.length}</b><span>models</span></div>
+            <div><b>{weight ? `${Math.round((100 * weight.weight) / total)}%` : "–"}</b><span>Open Index weight</span></div>
+            <div><b>{b.lastUpdated ?? "–"}</b><span>last updated</span></div>
+            <div><b><a href={b.url} rel="noreferrer">{publisherOf(b)}</a></b><span>{b.community ? "maintainer" : "publisher"}</span></div>
+          </div>
+        </section>
+        <section className="oa-section">
+          <div className="chart-panel">
+            <BenchmarkBars title={b.name} unit={b.unit} higherIsBetter={b.higherIsBetter} pts={benchmarkPoints(id)} labs={labs()} height={440} limit={30}
+              desc={`${b.higherIsBetter ? "Higher" : "Lower"} is better · best effort per model${b.costNote ? ` · ${b.costNote}` : ""}`} />
+          </div>
+          <div className="chart-panel oa-scroll">
+            <table className="oa-table">
+              <thead><tr><th>#</th><th>Model</th><th>Effort</th><th className="num">Score</th><th className="num">Cost / task</th><th>Harness</th></tr></thead>
+              <tbody>
+                {rows.map((r, i) => (
+                  <tr key={r.modelId}>
+                    <td>{i + 1}</td>
+                    <td><span className="oa-dot" style={{ background: labColor(r.labId) }} /><Link href={`/models/${r.modelId}`}>{r.name}</Link></td>
+                    <td>{r.effort === "default" ? "–" : r.effort}</td>
+                    <td className="num"><a href={r.sourceUrl} rel="noreferrer">{r.value.toFixed(digits)}{UNIT[b.unit]}</a></td>
+                    <td className="num">{usd(r.costUsd)}</td>
+                    <td>{r.harness ?? "–"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </main>
+    </div>
   );
 }

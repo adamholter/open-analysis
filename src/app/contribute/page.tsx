@@ -23,10 +23,11 @@ gemini-4,medium,43.0,0.023,33,`;
 
 export default function Contribute() {
   return (
-    <main>
-      <section className="prose">
+    <div className="oa-body no-side">
+    <main className="oa-main">
+      <section className="oa-prose">
         <h1>Add a benchmark</h1>
-        <p className="lede">A community benchmark is a folder with two files. Open a pull request and it appears on the site once checks pass and a maintainer merges it.</p>
+        <p className="oa-lede">A community benchmark is a folder with two files. Open a pull request and it appears on the site once checks pass and a maintainer merges it.</p>
         <h2>1. <code>community/my-bench/benchmark.json</code></h2>
         <pre><code>{SPEC}</code></pre>
         <p>Categories: coding, agentic, reasoning, knowledge, math, long-context, instruction, creative, safety, economics, other. Units: percent, score (add <code>&quot;scale&quot;: {"{"}&quot;min&quot;: 0, &quot;max&quot;: 10{"}"}</code>), elo, usd, seconds, count.</p>
@@ -47,8 +48,9 @@ export default function Contribute() {
           <li>Results you ran yourself or that your benchmark publishes. No copies of other leaderboards.</li>
           <li>Joining the Open Index is a separate pull request to <code>open-index.json</code>, decided on coverage and how much the benchmark adds.</li>
         </ul>
-        <p><a className="btn" href={`${REPO}/tree/main/community`}>Browse community benchmarks on GitHub</a></p>
+        <p><a className="oa-cta" href={`${REPO}/tree/main/community`}>Browse community benchmarks on GitHub</a></p>
       </section>
     </main>
+    </div>
   );
 }

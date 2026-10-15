@@ -2,7 +2,7 @@
 
 Open-source AI model rankings. One fixed index, built from independent public benchmarks plus community benchmarks anyone can add by pull request.
 
-- **Leaderboard**: the Open Index, intelligence vs. cost, intelligence vs. speed, output speed.
+- **Leaderboards**: the Open Index, capability indexes (coding, agentic, reasoning, math, knowledge, finance, long context, security), intelligence vs. cost and speed, every benchmark as its own chart, open weights, output tokens, cost, speed and latency, providers, trends.
 - **Models** and **benchmarks**: every result, linked to where it was published.
 - **Community benchmarks**: a folder in `community/` with `benchmark.json` and `results.csv`. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
@@ -19,7 +19,7 @@ npm run dev    # http://localhost:48760
 ## How the data flows
 
 1. Public benchmarks are scraped by [Priors](https://github.com/adamholter/priors) every two hours (`config/upstream.json` points at its latest snapshot).
-2. `scripts/build-data.ts` drops the sources listed in `excludeSources`, then merges `community/*`.
+2. `scripts/build-data.ts` drops any sources listed in `excludeSources` (none by default), then merges `community/*`.
 3. The site is statically generated from `data/snapshot.json.gz`. The index weights are in `open-index.json`.
 
 ## Layout
@@ -29,4 +29,5 @@ npm run dev    # http://localhost:48760
 - `src/data/community.ts`: community schema, model matching and merge (tests alongside).
 - `src/engine/`, `src/data/{types,normalize,...}.ts`: shared with Priors. Change them there first.
 - `src/lib/data.ts`: index rows, per-model and per-benchmark queries.
-- `src/components/Chart.tsx`: ECharts bars and scatter.
+- `src/lib/views.ts`: server-side chart payloads. `src/components/oa/`: page shell and chart cards.
+- `src/components/chart/`: Priors' ECharts components (highlight, export, expand, settings).
