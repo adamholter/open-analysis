@@ -31,7 +31,7 @@ export function Radar({ axes, series, ghost, norm, size = 340, labels = true, co
   const [hover, setHover] = useState<Hover>(null);
   const activeAxis = hover?.axis ?? hoverAxis ?? null;
   const set = (h: Hover) => { setHover(h); onHoverAxis?.(h?.kind === "axis" ? h.axis : null); };
-  const padX = labels ? 112 : 4, padY = labels ? 30 : 4;
+  const padX = labels ? 132 : 4, padY = labels ? 30 : 4; // Open Analysis: 112 clipped 17-18 character names
   const W = size + padX * 2, H = size + padY * 2, cx = W / 2, cy = H / 2, R = size / 2;
   const angles = spokeAngles(axes.length);
   const rings = [0.25, 0.5, 0.75, 1], caps = ringLabels(norm);

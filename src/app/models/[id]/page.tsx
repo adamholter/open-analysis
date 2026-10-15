@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { labColor, modelResults, snapshot } from "@/lib/data";
-import { openIndexView, publisherOf } from "@/lib/views";
-import { categoryLabel } from "@/lib/categories";
+import { ModelBody } from "@/components/model/ModelBody";
+import { labColor, modelFacts, modelResults, snapshot } from "@/lib/data";
+import { openIndexView } from "@/lib/views";
 
 export function generateStaticParams() {
   return snapshot().models.filter((m) => modelResults(m.id).length).map((m) => ({ id: m.id }));
@@ -11,10 +11,13 @@ export function generateStaticParams() {
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const id = decodeURIComponent((await params).id);
-  return { title: snapshot().models.find((x) => x.id === id)?.name ?? "Model" };
+  const m = snapshot().models.find((x) => x.id === id);
+  const top = openIndexView().best.find((r) => r.model.id === id);
+  return { title: m ? `${m.name} · benchmarks` : "Model", description: m && top ? `${m.name} ranks #${top.rank} on the Open Index with ${top.score.toFixed(1)}. Every benchmark result, by reasoning effort.` : m ? `How ${m.name} scores on every benchmark Open Analysis tracks.` : undefined };
 }
 
-const usd = (v?: number) => (v == null ? "–" : `$${v < 0.01 ? v.toFixed(4) : v < 1 ? v.toFixed(3) : v.toFixed(2)}`);
+const tokens = (n: number) => (n >= 1e6 ? `${+(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${Math.round(n / 1e3)}K` : `${n}`);
+const price = (n: number) => `$${n < 1 ? n.toFixed(2) : +n.toFixed(2)}`;
 
 export default async function ModelPage({ params }: { params: Promise<{ id: string }> }) {
   const id = decodeURIComponent((await params).id);
@@ -23,58 +26,35 @@ export default async function ModelPage({ params }: { params: Promise<{ id: stri
   if (!model) notFound();
   const index = openIndexView();
   const ranked = index.best.find((r) => r.model.id === id);
-  const efforts = index.all.filter((r) => r.model.id === id);
-  const results = modelResults(id).sort((a, b) => a.benchmark.category.localeCompare(b.benchmark.category) || a.benchmark.name.localeCompare(b.benchmark.name) || b.value - a.value);
+  const efforts = index.all.filter((r) => r.model.id === id).length;
+  const results = modelResults(id);
+  const measured = new Set(results.filter((r) => !r.benchmark.proxy).map((r) => r.benchmark.id)).size;
   const lab = snap.labs.find((l) => l.id === model.labId)?.name ?? model.labId;
+  const facts = modelFacts(id);
+  const fact: [string, string][] = [
+    ...(facts?.openWeights != null ? [["Weights", facts.openWeights ? `Open${facts.license ? ` · ${facts.license}` : ""}` : "Proprietary"] as [string, string]] : []),
+    ...(facts?.paramsB ? [["Parameters", `${facts.paramsB}B${facts.activeParamsB ? ` (${facts.activeParamsB}B active)` : ""}`] as [string, string]] : []),
+    ...(facts?.contextTokens ? [["Context window", `${tokens(facts.contextTokens)} tokens`] as [string, string]] : []),
+    ...(facts?.priceInPerM != null && facts.priceOutPerM != null ? [["API price", `${price(facts.priceInPerM)} in · ${price(facts.priceOutPerM)} out per 1M tokens`] as [string, string]] : []),
+  ];
   return (
     <div className="oa-body no-side">
       <main className="oa-main">
-        <section className="oa-hero">
-          <p className="oa-crumb"><Link href="/models">Models</Link> / {lab}</p>
-          <h1 className="mt-2"><span className="oa-dot" data-lab={model.labId} style={{ background: labColor(model.labId), width: 18, height: 18 }} />{model.name}</h1>
-          <div className="oa-stats">
-            <div><b>{ranked ? `#${ranked.rank}` : "–"}</b><span>Open Index rank</span></div>
-            <div><b>{ranked ? ranked.score.toFixed(1) : "–"}</b><span>Open Index{ranked && ranked.variant.effort !== "default" ? ` (${ranked.variant.effort})` : ""}</span></div>
-            <div><b>{usd(ranked?.costUsd)}</b><span>cost per task</span></div>
-            <div><b>{ranked?.speed != null ? Math.round(ranked.speed) : "–"}</b><span>output tokens/s</span></div>
-            <div><b>{model.releaseDate ?? "–"}</b><span>released</span></div>
-            <div><b>{results.length}</b><span>results</span></div>
+        <section className="oa-hero grid gap-5 sm:grid-cols-[1fr_auto] items-end">
+          <div>
+            <p className="cap flex items-center gap-2"><Link href="/models" className="hover:text-ink">Models</Link><span aria-hidden="true">/</span><i className="oa-dot" data-lab={model.labId} style={{ background: labColor(model.labId), margin: 0 }} />{lab}{model.releaseDate && ` · released ${model.releaseDate}`}</p>
+            <h1 className="mt-2">{model.name}</h1>
+            <p className="oa-lede mt-2">Measured on {measured} benchmarks{efforts > 1 ? ` across ${efforts} reasoning efforts` : ""}.</p>
           </div>
-          {ranked ? <p className="mt-5"><Link className="btn-quiet" href={`/?hl=${model.id}#intelligence`}>Highlight on the leaderboards</Link></p>
-            : <p className="oa-lede mt-5">Not ranked: it lacks enough measured results on the Open Index benchmarks, or was released more than six months ago.</p>}
-        </section>
-        {efforts.length > 1 && (
-          <section className="oa-section">
-            <h2>By Reasoning Effort</h2>
-            <div className="chart-panel oa-scroll">
-              <table className="oa-table">
-                <thead><tr><th>Effort</th><th className="num">Open Index</th><th className="num">Measured</th><th className="num oa-hide-sm">Cost / task</th></tr></thead>
-                <tbody>{efforts.map((r) => <tr key={r.variant.id}><td>{r.variant.effort}</td><td className="num">{r.score.toFixed(1)}</td><td className="num">{Math.round(r.measuredShare * 100)}%</td><td className="num oa-hide-sm">{usd(r.costUsd)}</td></tr>)}</tbody>
-              </table>
-            </div>
-          </section>
-        )}
-        <section className="oa-section">
-          <h2>All Results</h2>
-          <p className="lede">{results.length} measured results, as published.</p>
-          <div className="chart-panel oa-scroll">
-            <table className="oa-table">
-              <thead><tr><th>Benchmark</th><th>Category</th><th>Effort</th><th className="num">Score</th><th className="num oa-hide-sm">Cost / task</th><th>Source</th></tr></thead>
-              <tbody>
-                {results.map((r, i) => (
-                  <tr key={i}>
-                    <td><Link href={`/benchmarks/${r.benchmark.id}`}>{r.benchmark.name}</Link>{r.benchmark.community && <span className="oa-badge">community</span>}</td>
-                    <td>{categoryLabel(r.benchmark.category)}</td>
-                    <td>{r.effort === "default" ? "–" : r.effort}</td>
-                    <td className="num">{r.benchmark.unit === "percent" ? `${r.value.toFixed(1)}%` : r.value.toLocaleString(undefined, { maximumFractionDigits: 2 })}</td>
-                    <td className="num oa-hide-sm">{usd(r.costUsd)}</td>
-                    <td><a href={r.sourceUrl} rel="noreferrer">{publisherOf(r.benchmark)}</a></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="sm:text-right">
+            <p className="cap">{index.name}</p>
+            {ranked
+              ? <><p className="num text-[52px] leading-none mt-1" style={{ color: "var(--indigo)" }}>{ranked.score.toFixed(1)}</p><p className="text-[13px] mt-1" style={{ color: "var(--ink-2)" }}>#{ranked.rank} of {index.best.length} models{ranked.variant.effort !== "default" ? ` · best at ${ranked.variant.effort}` : ""}</p></>
+              : <p className="text-[13px] mt-2 max-w-[30ch]" style={{ color: "var(--ink-2)" }}>Not ranked on the Open Index: too little measured data on its benchmarks, or released more than six months ago.</p>}
           </div>
         </section>
+        {fact.length > 0 && <dl className="oa-facts">{fact.map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}</dl>}
+        <ModelBody modelId={id} />
       </main>
     </div>
   );

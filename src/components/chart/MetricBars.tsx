@@ -76,7 +76,7 @@ export function MetricBars({ pts: allPoints, labs, better, xName, formatValue, h
           n: chartLabel(p.r), v: value(p), c, d, dc: dimColor(c, LIGHT_PALETTE), dd: dimColor(d, DARK_PALETTE),
           m: p.r.model.id, mn: p.r.model.name, id: p.r.variant.id, e: p.r.variant.effort,
           h: focusedModels.has(p.r.model.id), a: featured.has(p.r.variant.id),
-          t: `<b>${escapeHtml(chartLabel(p.r))}</b><div style="font-family:'JetBrains Mono',monospace;margin-top:4px">${compact(formatValue)(value(p))} · index ${p.r.score.toFixed(1)}</div>`,
+          t: `<b>${escapeHtml(chartLabel(p.r))}</b><div style="font-family:'JetBrains Mono',monospace;margin-top:4px">${p.free ? "free" : escapeHtml(compact(formatValue)(value(p)))} · index ${p.r.score.toFixed(1)}</div>`,
         };
       }),
     });

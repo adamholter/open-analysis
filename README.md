@@ -33,4 +33,5 @@ The included snapshot lets you run the app without API keys. Refresh it with `np
 - `src/engine/`, `src/data/{types,normalize,...}.ts`: shared with Priors. Change them there first.
 - `src/lib/data.ts`: index rows, per-model and per-benchmark queries.
 - `src/lib/views.ts`: server-side chart payloads. `src/components/oa/`: page shell and chart cards.
+- `src/components/model/`: model page body (efforts, strengths radar, cost and speed field strips, per-benchmark cards), from Priors.
 - `src/components/chart/`: Priors' ECharts components (highlight, export, expand, settings).

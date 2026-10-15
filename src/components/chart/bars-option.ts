@@ -169,7 +169,7 @@ export function barsOption({ bars, labs, xName, formatValue, pal, highlight, lab
     ],
     // Open Analysis: headroom so labels above the tallest bars never reach the axis title.
     yAxis: { type: "value", ...axis, name: xName, nameTextStyle: { color: pal.grey, fontSize: 11 * t, align: "left", padding: [0, 0, 0, -30 * t] }, axisLabel: { formatter: (v: number) => compact(formatValue)(v) } },
-    tooltip: { trigger: "item", confine: true, formatter: (p: unknown) => { const d = (p as { data?: { point?: ScatterPoint } }).data?.point; return d ? `<div style="font-weight:600">${escapeHtml(chartLabel(d.r))}</div><div style="font-family:var(--font-jetbrains);margin-top:4px">${escapeHtml(formatValue(value(d)))} · index ${d.r.score.toFixed(1)}</div>` : ""; } },
+    tooltip: { trigger: "item", confine: true, formatter: (p: unknown) => { const d = (p as { data?: { point?: ScatterPoint } }).data?.point; return d ? `<div style="font-weight:600">${escapeHtml(chartLabel(d.r))}</div><div style="font-family:var(--font-jetbrains);margin-top:4px">${d.free ? "free" : escapeHtml(formatValue(value(d)))} · index ${d.r.score.toFixed(1)}</div>` : ""; } },
     series: [{
       type: "bar", id: "bars", barMaxWidth: maxBar, barCategoryGap: "24%",
       data: layout.entries.map((entry) => {
@@ -178,7 +178,7 @@ export function barsOption({ bars, labs, xName, formatValue, pal, highlight, lab
         const placement = inside && !dim && !short(p) ? { position: "inside" as const, distance: 0, rotate: 0, align: "center" as const, verticalAlign: "middle" as const, opacity: 1, ...insideLabelOn(c) } : above;
         return { value: value(p), point: p, extra: p, itemStyle: { color: dim ? dimColor(c, pal) : c, opacity: dim ? 0.6 : 1, borderRadius: [pal.style?.barRadius ?? 2, pal.style?.barRadius ?? 2, 0, 0] }, label: { show: true, ...placement, fontWeight: on && featured.has(p.r.variant.id) ? 700 : 400 } };
       }),
-      label: { show: true, ...(inside ? { position: "inside" as const, distance: 0, rotate: 0, align: "center" as const, verticalAlign: "middle" as const, color: "#FFFFFF", textBorderWidth: 0 } : above), fontSize, fontFamily: pal.fonts?.mono ?? "var(--font-jetbrains), monospace", formatter: (p: { value?: unknown }) => fmt(Number(p.value)) }, labelLayout: { hideOverlap: true },
+      label: { show: true, ...(inside ? { position: "inside" as const, distance: 0, rotate: 0, align: "center" as const, verticalAlign: "middle" as const, color: "#FFFFFF", textBorderWidth: 0 } : above), fontSize, fontFamily: pal.fonts?.mono ?? "var(--font-jetbrains), monospace", formatter: (p: { value?: unknown; data?: unknown }) => ((p.data as { point?: ScatterPoint } | null)?.point?.free ? "free" : fmt(Number(p.value))) }, labelLayout: { hideOverlap: true },
       animationDurationUpdate: 350,
     }],
   };

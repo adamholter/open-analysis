@@ -1,10 +1,8 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { gunzipSync } from "node:zlib";
-import type { IndexConfig } from "@/engine";
 import { themeById } from "@/lib/page-presets";
 import type { Benchmark, Snapshot } from "@/data/types";
-import openIndex from "../../open-index.json";
 
 let cached: Snapshot | null = null;
 export function snapshot(): Snapshot {
@@ -12,16 +10,7 @@ export function snapshot(): Snapshot {
   return cached;
 }
 
-export const OPEN_INDEX = openIndex;
-
-export function openIndexConfig(): IndexConfig {
-  return {
-    id: "open-index", name: openIndex.name,
-    weights: Object.fromEntries(openIndex.benchmarks.map((b) => [b.id, b.weight])),
-    required: [], cutoff: 5, strictness: openIndex.strictness, estimateMissing: true,
-    variants: "all", rankingVariants: "best", paretoVariants: "all",
-  };
-}
+export { OPEN_INDEX, openIndexConfig } from "@/lib/open-index";
 
 /** Lab colors from the Analysis theme (AA creator colors), same as the charts. */
 const LAB_COLORS = themeById("aa")!.labColors!;
@@ -65,3 +54,48 @@ export function benchmarkRows(benchmarkId: string): BenchmarkRow[] {
 }
 
 
+
+
+/**
+ * The snapshot minus what model pages never read (source URLs, notes, AA metadata blobs), served once as a static file
+ * at /data/snapshot-lite.json and shared by every model page instead of being embedded in each of them.
+ */
+export function liteSnapshot(): Snapshot {
+  const snap = snapshot();
+  const keepDetails = new Set(["estimatedDecodeSecondsPerTask", "outputTokensPerTask", "priorsEstimate", "window"]);
+  // Radar axes print `shortName ?? name`; drop trailing "(Vals)"-style qualifiers so long names fit around the chart.
+  const benchmarks = snap.benchmarks.map((b) => { if (b.shortName) return b; const short = b.name.replace(/\s*\([^)]*\)\s*$/, ""); return short !== b.name && short.length >= 4 ? { ...b, shortName: short } : b; });
+  return {
+    ...snap,
+    benchmarks,
+    sources: [],
+    series: [],
+    variants: snap.variants.map((v) => ({ ...v, sourceModels: undefined, sourceModel: v.sourceModel ? { id: v.sourceModel.id, slug: v.sourceModel.slug, name: v.sourceModel.name, url: "" } : undefined })),
+    observations: snap.observations.map((o) => {
+      const details = o.details && Object.fromEntries(Object.entries(o.details).filter(([k]) => keepDetails.has(k)));
+      return { benchmarkId: o.benchmarkId, variantId: o.variantId, value: o.value, observedAt: "", sourceUrl: "",
+        ...(o.costUsd != null ? { costUsd: o.costUsd } : {}), ...(o.durationSec != null ? { durationSec: o.durationSec } : {}), ...(o.outputTokens != null ? { outputTokens: o.outputTokens } : {}),
+        ...(details && Object.keys(details).length ? { details } : {}) };
+    }),
+  };
+}
+
+export interface ModelFacts { creator?: string; openWeights?: boolean; license?: string; paramsB?: number; activeParamsB?: number; contextTokens?: number; priceInPerM?: number; priceOutPerM?: number }
+
+/** What Artificial Analysis publishes about a model itself (licensing, size, context window, list price). */
+export function modelFacts(modelId: string): ModelFacts | undefined {
+  const num = (x: unknown) => (typeof x === "number" && Number.isFinite(x) ? x : undefined);
+  for (const v of snapshot().variants) {
+    if (v.modelId !== modelId) continue;
+    for (const sm of v.sourceModels ?? (v.sourceModel ? [v.sourceModel] : [])) {
+      const m = sm.metadata;
+      if (!m || !("isOpenWeights" in m)) continue;
+      return {
+        creator: (m.creator as { name?: string } | undefined)?.name, openWeights: typeof m.isOpenWeights === "boolean" ? m.isOpenWeights : undefined,
+        license: typeof m.licenseName === "string" ? m.licenseName : undefined, paramsB: num(m.parameters), activeParamsB: num(m.inferenceParametersActiveBillions ?? m.activeParams),
+        contextTokens: num(m.contextWindowTokens), priceInPerM: num(m.price1mInputTokens), priceOutPerM: num(m.price1mOutputTokens),
+      };
+    }
+  }
+  return undefined;
+}
