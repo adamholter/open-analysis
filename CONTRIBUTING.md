@@ -20,7 +20,7 @@ Create `community/<id>/` with two files. The folder name must equal `id`.
 }
 ```
 
-- `category`: coding, agentic, reasoning, knowledge, math, long-context, instruction, creative, safety, economics, other.
+- `category`: coding, agentic, reasoning, knowledge, math, long-context, instruction, creative (shown as 3D), safety (shown as Cyber), economics (shown as Professional), other.
 - `unit`: percent, score (needs `"scale": {"min": 0, "max": 10}`), elo, usd, seconds, count.
 - Optional `costNote`: how `cost_usd` was priced.
 

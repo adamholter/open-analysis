@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { OPEN_INDEX, benchmarkById, benchmarkRows } from "@/lib/data";
 import { REPO } from "@/lib/site";
+import { categoryLabel } from "@/lib/categories";
 
 export const metadata: Metadata = { title: "Methodology" };
 
@@ -21,7 +22,7 @@ export default function Methodology() {
           <tbody>
             {OPEN_INDEX.benchmarks.map((x) => {
               const b = benchmarkById(x.id);
-              return <tr key={x.id}><td>{b ? <Link href={`/benchmarks/${x.id}`}>{b.name}</Link> : x.id}</td><td>{b?.category ?? "–"}</td><td className="num">{Math.round((100 * x.weight) / total)}%</td><td className="num">{benchmarkRows(x.id).length}</td></tr>;
+              return <tr key={x.id}><td>{b ? <Link href={`/benchmarks/${x.id}`}>{b.name}</Link> : x.id}</td><td>{b ? categoryLabel(b.category) : "–"}</td><td className="num">{Math.round((100 * x.weight) / total)}%</td><td className="num">{benchmarkRows(x.id).length}</td></tr>;
             })}
           </tbody>
         </table>

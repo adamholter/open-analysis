@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { BenchmarkBars } from "@/components/oa/Charts";
 import { OPEN_INDEX, benchmarkById, benchmarkRows, labColor, snapshot } from "@/lib/data";
 import { benchmarkPoints, labs, publisherOf } from "@/lib/views";
+import { categoryLabel } from "@/lib/categories";
 
 export function generateStaticParams() {
   return snapshot().benchmarks.filter((b) => benchmarkRows(b.id).length).map((b) => ({ id: b.id }));
@@ -29,7 +30,7 @@ export default async function BenchmarkPage({ params }: { params: Promise<{ id: 
     <div className="oa-body no-side">
       <main className="oa-main">
         <section className="oa-hero">
-          <p className="oa-crumb"><Link href="/benchmarks">Benchmarks</Link> / {b.category}</p>
+          <p className="oa-crumb"><Link href="/benchmarks">Benchmarks</Link> / {categoryLabel(b.category)}</p>
           <h1 className="mt-2">{b.name}{b.community && <span className="oa-badge">community</span>}</h1>
           <p className="oa-lede mt-3">{b.description}</p>
           <div className="oa-stats">

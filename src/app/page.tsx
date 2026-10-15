@@ -8,7 +8,6 @@ import { benchmarkCharts, capabilityIndexes, labs, metricViews, openIndexView, o
 const SECTIONS = [
   { id: "intelligence", label: "Intelligence" },
   { id: "capabilities", label: "Capability Indexes" },
-  { id: "community", label: "Community", tag: "NEW" },
   { id: "benchmarks", label: "Benchmarks" },
   { id: "openness", label: "Open Weights" },
   { id: "tokens", label: "Output Tokens" },
@@ -71,16 +70,10 @@ export default function Home() {
           <CapabilityTabs indexes={capabilityIndexes()} labs={L} />
         </section>
 
-        <section id="community" className="oa-section">
-          <h2>Community Benchmarks</h2>
-          <p className="lede">Benchmarks run and published by independent builders, added as a folder in the repo. <Link href="/contribute" className="underline">Add yours</Link>.</p>
-          <BenchmarkGrid charts={community} models={chartModels} labs={L} />
-        </section>
-
         <section id="benchmarks" className="oa-section">
           <h2>Benchmarks</h2>
-          <p className="lede">Every public benchmark with results for at least eight models released in the last six months. Best effort per model.</p>
-          <BenchmarkGrid charts={charts.filter((c) => !c.community)} models={chartModels} labs={L} initial={12} />
+          <p className="lede">Every benchmark with results for at least eight models released in the last six months, including {community.length} from the community. Best effort per model. <Link href="/contribute" className="underline">Add yours</Link>.</p>
+          <BenchmarkGrid charts={charts} models={chartModels} labs={L} initial={12} />
         </section>
 
         <section id="openness" className="oa-section">

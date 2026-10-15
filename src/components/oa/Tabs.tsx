@@ -6,6 +6,7 @@ import type { Effort } from "@/data/types";
 import type { MetricPoint } from "@/lib/metrics";
 import type { IndexView, BenchmarkChart, ChartModel } from "@/lib/views";
 import { BenchmarkBars, IndexBars } from "./Charts";
+import { categoryLabel } from "@/lib/categories";
 
 const pct = (s: number) => `${Math.round(s)}%`;
 
@@ -42,13 +43,13 @@ function BenchmarkCard({ c, models, labs }: { c: BenchmarkChart; models: ChartMo
   return (
     <div className="chart-panel oa-small">
       <BenchmarkBars anchor={`b-${c.id}`} title={c.name} unit={c.unit} higherIsBetter={c.higherIsBetter} pts={pts} labs={labs} height={300} limit={20}
-        desc={<><Link href={`/benchmarks/${c.id}`}>{c.publisher}</Link>{c.community && " · community"} · {c.category} · {c.models} recent models{c.updated ? ` · updated ${c.updated}` : ""}</>} />
+        desc={<><Link href={`/benchmarks/${c.id}`}>{c.publisher}</Link>{c.community && <span className="oa-badge">community</span>} · {categoryLabel(c.category)} · {c.models} recent models{c.updated ? ` · updated ${c.updated}` : ""}</>} />
     </div>
   );
 }
 
 export function BenchmarkGrid({ charts, models, labs, initial = 12 }: { charts: BenchmarkChart[]; models: ChartModel[]; labs: Lab[]; initial?: number }) {
-  const cats = [...new Set(charts.map((c) => c.category))].sort();
+  const cats = [...new Set(charts.map((c) => c.category))].sort((a, b) => categoryLabel(a).localeCompare(categoryLabel(b)));
   const [cat, setCat] = useState<string | null>(null);
   const [more, setMore] = useState(false);
   const shown = charts.filter((c) => !cat || c.category === cat);
@@ -57,7 +58,7 @@ export function BenchmarkGrid({ charts, models, labs, initial = 12 }: { charts: 
     <div>
       <div className="oa-chips mb-6">
         <button type="button" aria-pressed={!cat} onClick={() => setCat(null)}>All ({charts.length})</button>
-        {cats.map((c) => <button key={c} type="button" aria-pressed={cat === c} onClick={() => setCat(c)}>{c.replace(/-/g, " ")}</button>)}
+        {cats.map((c) => <button key={c} type="button" aria-pressed={cat === c} onClick={() => setCat(c)}>{categoryLabel(c)}</button>)}
       </div>
       <div className="oa-grid2">
         {visible.map((c) => <BenchmarkCard key={c.id} c={c} models={models} labs={labs} />)}

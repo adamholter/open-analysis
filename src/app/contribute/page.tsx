@@ -30,7 +30,7 @@ export default function Contribute() {
         <p className="oa-lede">A community benchmark is a folder with two files. Open a pull request and it appears on the site once checks pass and a maintainer merges it.</p>
         <h2>1. <code>community/my-bench/benchmark.json</code></h2>
         <pre><code>{SPEC}</code></pre>
-        <p>Categories: coding, agentic, reasoning, knowledge, math, long-context, instruction, creative, safety, economics, other. Units: percent, score (add <code>&quot;scale&quot;: {"{"}&quot;min&quot;: 0, &quot;max&quot;: 10{"}"}</code>), elo, usd, seconds, count.</p>
+        <p>Categories: coding, agentic, reasoning, knowledge, math, long-context, instruction, creative (shown as 3D), safety (shown as Cyber), economics (shown as Professional), other. Units: percent, score (add <code>&quot;scale&quot;: {"{"}&quot;min&quot;: 0, &quot;max&quot;: 10{"}"}</code>), elo, usd, seconds, count.</p>
         <h2>2. <code>community/my-bench/results.csv</code></h2>
         <pre><code>{CSV}</code></pre>
         <ul>

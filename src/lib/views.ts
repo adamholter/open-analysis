@@ -62,8 +62,8 @@ const rankable = (b: Benchmark) => SCORE_UNITS.has(b.unit) && !b.proxy && b.cate
 
 export const CAPABILITIES: { id: BenchmarkCategory; name: string }[] = [
   { id: "coding", name: "Coding" }, { id: "agentic", name: "Agentic" }, { id: "reasoning", name: "Reasoning" },
-  { id: "math", name: "Math" }, { id: "knowledge", name: "Knowledge" }, { id: "economics", name: "Finance & Economics" },
-  { id: "long-context", name: "Long Context" }, { id: "safety", name: "Security" },
+  { id: "math", name: "Math" }, { id: "knowledge", name: "Knowledge" }, { id: "economics", name: "Professional" },
+  { id: "long-context", name: "Long Context" }, { id: "safety", name: "Cyber" },
 ];
 
 /** One index per capability: the six best-covered benchmarks in that category, equal weight, at most two per publisher. */
@@ -112,7 +112,7 @@ export const benchmarkCharts = (): BenchmarkCharts => cached("benchmarks", () =>
     charts.push({ id: b.id, name: b.name, category: b.category, publisher: publisherOf(b), community: !!b.community, unit: b.unit,
       higherIsBetter: b.higherIsBetter, updated: b.lastUpdated, models: cov.get(b.id)!.size, points });
   }
-  return { models, charts: charts.sort((a, b) => Number(b.community) - Number(a.community) || b.models - a.models) };
+  return { models, charts: charts.sort((a, b) => b.models - a.models) };
 });
 
 export function publisherOf(b: Benchmark): string {

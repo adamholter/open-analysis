@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { labColor, modelResults, snapshot } from "@/lib/data";
 import { openIndexView, publisherOf } from "@/lib/views";
+import { categoryLabel } from "@/lib/categories";
 
 export function generateStaticParams() {
   return snapshot().models.filter((m) => modelResults(m.id).length).map((m) => ({ id: m.id }));
@@ -63,7 +64,7 @@ export default async function ModelPage({ params }: { params: Promise<{ id: stri
                 {results.map((r, i) => (
                   <tr key={i}>
                     <td><Link href={`/benchmarks/${r.benchmark.id}`}>{r.benchmark.name}</Link>{r.benchmark.community && <span className="oa-badge">community</span>}</td>
-                    <td>{r.benchmark.category}</td>
+                    <td>{categoryLabel(r.benchmark.category)}</td>
                     <td>{r.effort === "default" ? "–" : r.effort}</td>
                     <td className="num">{r.benchmark.unit === "percent" ? `${r.value.toFixed(1)}%` : r.value.toLocaleString(undefined, { maximumFractionDigits: 2 })}</td>
                     <td className="num">{usd(r.costUsd)}</td>

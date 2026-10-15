@@ -40,7 +40,6 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
                 <Link href="/">Leaderboards</Link>
                 <Link href="/models">Models</Link>
                 <Link href="/benchmarks">Benchmarks</Link>
-                <Link href="/benchmarks#community">Community</Link>
                 <Link href="/methodology">Methodology</Link>
                 <a href={REPO}>GitHub</a>
               </nav>
