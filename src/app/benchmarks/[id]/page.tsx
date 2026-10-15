@@ -52,7 +52,7 @@ export default async function BenchmarkPage({ params }: { params: Promise<{ id: 
                 {rows.map((r, i) => (
                   <tr key={r.modelId}>
                     <td>{i + 1}</td>
-                    <td><span className="oa-dot" style={{ background: labColor(r.labId) }} /><Link href={`/models/${r.modelId}`}>{r.name}</Link></td>
+                    <td><span className="oa-dot" data-lab={r.labId} style={{ background: labColor(r.labId) }} /><Link href={`/models/${r.modelId}`}>{r.name}</Link></td>
                     <td>{r.effort === "default" ? "–" : r.effort}</td>
                     <td className="num"><a href={r.sourceUrl} rel="noreferrer">{r.value.toFixed(digits)}{UNIT[b.unit]}</a></td>
                     <td className="num">{usd(r.costUsd)}</td>

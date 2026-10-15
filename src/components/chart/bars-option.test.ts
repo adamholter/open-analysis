@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ScatterPoint } from "./scatter-option";
-import { barLayout, defaultBarModels, filterBarModels, barLabelFit, selectBars } from "./bars-option";
+import { barChartMinWidth, barLayout, defaultBarModels, filterBarModels, barLabelFit, selectBars } from "./bars-option";
 
 const point = (model: string, effort: string, score: number, metric: number): ScatterPoint => ({
   x: metric,
@@ -38,6 +38,20 @@ it("creates one model label per group and leaves an axis gap between models", ()
   expect(layout.effortLabels).toEqual(["L", "H", "", ""]);
   expect(layout.modelLabels).toEqual(["Alpha", "", "", "Beta"]);
   expect(layout.entries.map((entry) => entry?.modelId ?? null)).toEqual(["alpha", "alpha", null, "beta"]);
+});
+
+it("does not insert empty bars between single-model categories", () => {
+  const layout = barLayout(["alpha", "beta", "gamma"].map((modelId) => ({ modelId, modelName: modelId, effort: "default", label: modelId })));
+  expect(layout.entries).toHaveLength(3);
+  expect(layout.modelLabels).toEqual(["alpha", "beta", "gamma"]);
+  expect(layout.effortLabels).toEqual(["", "", ""]);
+});
+
+it("gives expanded and mobile charts enough width for horizontal values", () => {
+  for (const labels of [["100.0%"], ["$0.0010", "$15.2"], ["1,561", "69.4"]]) {
+    const width = barChartMinWidth(80, labels, 11.5);
+    expect(barLabelFit(labels, 11.5, 80, width - 80, 64)).not.toBe("vertical");
+  }
 });
 
 describe("selectBars highlights", () => {

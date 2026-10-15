@@ -2,7 +2,7 @@ import Link from "next/link";
 import { CostChart, IndexBars, MetricCard } from "@/components/oa/Charts";
 import { BenchmarkGrid, CapabilityTabs } from "@/components/oa/Tabs";
 import { SideNav } from "@/components/oa/SideNav";
-import { OPEN_INDEX, snapshot } from "@/lib/data";
+import { OPEN_INDEX, labColor, snapshot } from "@/lib/data";
 import { benchmarkCharts, capabilityIndexes, labs, metricViews, openIndexView, openness, providers } from "@/lib/views";
 
 const SECTIONS = [
@@ -31,7 +31,6 @@ export default function Home() {
   const open = openness();
   const prov = providers();
   const tokens = panel("tokens"), latency = panel("latency"), tpt = panel("tpt"), uptime = panel("uptime"), date = panel("date"), usage = panel("usage");
-  const colors = new Map(snap.labs.map((l) => [l.id, l.color]));
   const labName = new Map(snap.labs.map((l) => [l.id, l.name]));
 
   return (
@@ -131,7 +130,7 @@ export default function Home() {
                 {index.best.map((r) => (
                   <tr key={r.variant.id}>
                     <td>{r.rank}</td>
-                    <td><span className="oa-dot" style={{ background: colors.get(r.model.labId) }} /><Link href={`/models/${r.model.id}`}>{r.model.name}</Link>{r.variant.effort !== "default" && <span className="oa-effort">{r.variant.effort}</span>}</td>
+                    <td><span className="oa-dot" data-lab={r.model.labId} style={{ background: labColor(r.model.labId) }} /><Link href={`/models/${r.model.id}`}>{r.model.name}</Link>{r.variant.effort !== "default" && <span className="oa-effort">{r.variant.effort}</span>}</td>
                     <td>{labName.get(r.model.labId) ?? r.model.labId}</td>
                     <td className="num"><b>{r.score.toFixed(1)}</b></td>
                     <td className="num">{pct(r.measuredShare)}</td>

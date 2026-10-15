@@ -11,10 +11,13 @@ Want your own weights instead of ours? Use [Priors](https://mypriors.com), which
 ## Run it
 
 ```sh
-npm install
-npm run data   # builds data/snapshot.json.gz
+git clone https://github.com/adamholter/open-analysis.git
+cd open-analysis
+npm ci
 npm run dev    # http://localhost:48760
 ```
+
+The included snapshot lets you run the app without API keys. Refresh it with `npm run data`.
 
 ## How the data flows
 

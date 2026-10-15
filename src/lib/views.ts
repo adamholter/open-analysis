@@ -109,6 +109,8 @@ export const benchmarkCharts = (): BenchmarkCharts => cached("benchmarks", () =>
       if (!v || !recent.has(v.modelId)) continue;
       points.push([modelSlot(v.modelId), v.effort, +o.value.toPrecision(5)]);
     }
+    // Skip boards that are mostly zeros (e.g. sub-scores nobody passes): nothing to compare.
+    if (new Set(points.filter((p) => p[2] !== 0).map((p) => p[0])).size < 8) continue;
     charts.push({ id: b.id, name: b.name, category: b.category, publisher: publisherOf(b), community: !!b.community, unit: b.unit,
       higherIsBetter: b.higherIsBetter, updated: b.lastUpdated, models: cov.get(b.id)!.size, points });
   }

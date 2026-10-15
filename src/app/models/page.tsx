@@ -26,7 +26,7 @@ export default function Models() {
               <tbody>
                 {models.map((m) => (
                   <tr key={m.id}>
-                    <td><span className="oa-dot" style={{ background: labColor(m.labId) }} /><Link href={`/models/${m.id}`}>{m.name}</Link></td>
+                    <td><span className="oa-dot" data-lab={m.labId} style={{ background: labColor(m.labId) }} /><Link href={`/models/${m.id}`}>{m.name}</Link></td>
                     <td><code>{m.id}</code></td>
                     <td>{labs.get(m.labId) ?? m.labId}</td>
                     <td className="num">{ranked.get(m.id)?.rank ?? "–"}</td>

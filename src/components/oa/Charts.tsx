@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { Lab } from "@/data/types";
 import type { RankedVariant } from "@/engine";
 import type { MetricPoint } from "@/lib/metrics";
@@ -17,6 +17,18 @@ function bestPoints(pts: MetricPoint[], lowerIsBetter = false): MetricPoint[] {
   const best = new Map<string, MetricPoint>();
   for (const p of pts) { const cur = best.get(p.r.model.id); if (!cur || (lowerIsBetter ? p.r.score < cur.r.score : p.r.score > cur.r.score)) best.set(p.r.model.id, p); }
   return [...best.values()];
+}
+
+/** Phones get fewer columns so names and values stay readable; "Show all" still expands. */
+function useNarrowLimit(limit: number) {
+  const [narrow, setNarrow] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 640px)");
+    const on = () => setNarrow(mq.matches);
+    on(); mq.addEventListener("change", on);
+    return () => mq.removeEventListener("change", on);
+  }, []);
+  return narrow ? Math.min(limit, 12) : limit;
 }
 
 /** Bars show every model (AA style); the settings picker can hide some. */
@@ -54,7 +66,8 @@ export function IndexBars({ title, desc, best, all, labs, limit = 30 }: { title:
   const [view, setView] = useScatterView(`index-${anchorOf(title)}`, "bars");
   const rows = mode === "best" ? best : all;
   const vis = useAllBars(useMemo(() => rows.map((r) => ({ x: r.score, r })), [rows]));
-  return <Rankings ranked={vis.points.map((p) => p.r)} labs={labs} limit={limit} showEffort={mode === "all"} anchor={anchorOf(title)} title={<Heading title={title} desc={desc} />}
+  const cap = useNarrowLimit(limit);
+  return <Rankings ranked={vis.points.map((p) => p.r)} labs={labs} limit={cap} showEffort={mode === "all"} anchor={anchorOf(title)} title={<Heading title={title} desc={desc} />}
     actions={<ChartSettings label={title} anchor={anchorOf(title)} mode={mode} onChange={setMode} view={view} onView={setView} {...vis.picker} />} />;
 }
 
@@ -88,6 +101,7 @@ export function BenchmarkBars({ title, desc, higherIsBetter, pts: allPts, labs, 
   const sorted = useMemo(() => (mode === "best" ? bestPoints(allPts, !higherIsBetter) : allPts).slice().sort((a, b) => (higherIsBetter ? b.x - a.x : a.x - b.x)), [mode, allPts, higherIsBetter]);
   const vis = useAllBars(sorted);
   const rows = useMemo(() => vis.points.map((p, i) => ({ ...p.r, rank: i + 1 })), [vis.points]);
-  return <Rankings ranked={rows} labs={labs} limit={limit} showEffort={mode === "all"} anchor={anchor ?? anchorOf(title)} title={<Heading title={title} desc={desc} />}
+  const cap = useNarrowLimit(limit);
+  return <Rankings ranked={rows} labs={labs} limit={cap} showEffort={mode === "all"} anchor={anchor ?? anchorOf(title)} title={<Heading title={title} desc={desc} />}
     actions={<ChartSettings label={title} anchor={anchor ?? anchorOf(title)} mode={mode} onChange={setMode} view={view} onView={setView} {...vis.picker} />} />;
 }

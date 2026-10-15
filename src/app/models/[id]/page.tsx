@@ -31,7 +31,7 @@ export default async function ModelPage({ params }: { params: Promise<{ id: stri
       <main className="oa-main">
         <section className="oa-hero">
           <p className="oa-crumb"><Link href="/models">Models</Link> / {lab}</p>
-          <h1 className="mt-2"><span className="oa-dot" style={{ background: labColor(model.labId), width: 18, height: 18 }} />{model.name}</h1>
+          <h1 className="mt-2"><span className="oa-dot" data-lab={model.labId} style={{ background: labColor(model.labId), width: 18, height: 18 }} />{model.name}</h1>
           <div className="oa-stats">
             <div><b>{ranked ? `#${ranked.rank}` : "–"}</b><span>Open Index rank</span></div>
             <div><b>{ranked ? ranked.score.toFixed(1) : "–"}</b><span>Open Index{ranked && ranked.variant.effort !== "default" ? ` (${ranked.variant.effort})` : ""}</span></div>

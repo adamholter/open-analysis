@@ -360,6 +360,18 @@ html[data-theme="dark"] body { background: #0A0A0A; }
 .oa-table a { text-decoration: none; }
 .oa-table a:hover { text-decoration: underline; }
 .oa-scroll { overflow-x: auto; }
+.bar-chart-frame { min-width: 0; display: flex; flex-direction: column; }
+.bar-chart-scroll { flex: 1; min-height: 0; max-width: 100%; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin; scrollbar-color: var(--grey) var(--hair-2); }
+.bar-chart-scroll:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.bar-chart-nav { display: flex; justify-content: flex-end; gap: 4px; padding-top: 4px; }
+.bar-chart-nav button { display: grid; place-items: center; width: 28px; height: 26px; border: 1px solid var(--hair); border-radius: 4px; color: var(--ink); background: var(--white); }
+.bar-chart-nav button:disabled { opacity: .3; cursor: default; }
+.bar-chart-nav button:not(:disabled):hover { background: var(--hair-2); }
+/* Lab dots are server-rendered in light AA colors; dark mode swaps the near-black ones (aa-dark labColors). */
+html[data-theme="dark"] .oa-dot[data-lab="openai"] { background: #E6E6E6 !important; }
+html[data-theme="dark"] .oa-dot[data-lab="inception"] { background: #7A94B8 !important; }
+html[data-theme="dark"] .oa-dot[data-lab="deepseek"] { background: #5C78FF !important; }
+html[data-theme="dark"] .oa-dot[data-lab="cursor"] { background: #A0A0A0 !important; }
 .oa-dot { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 8px; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink) 18%, transparent); }
 .oa-effort { color: var(--grey); font-size: 12px; margin-left: 6px; }
 .oa-badge { font-family: var(--font-sans); font-size: 11px; font-weight: 500; color: var(--panel-accent); border: 1px solid color-mix(in srgb, var(--panel-accent) 40%, transparent); border-radius: 999px; padding: 1px 8px; margin-left: 8px; white-space: nowrap; vertical-align: middle; }
@@ -379,7 +391,7 @@ html[data-theme="dark"] body { background: #0A0A0A; }
   .oa-body { grid-template-columns: minmax(0, 1fr); padding: 0 16px; }
   .oa-side { display: none; }
   .oa-header-in { flex-wrap: wrap; padding: 10px 16px; gap: 10px; }
-  .oa-nav { order: 3; width: 100%; }
+  .oa-nav { order: 3; width: 100%; flex-wrap: wrap; justify-content: center; border-radius: 18px; }
   .oa-hero h1 { font-size: 34px; }
   .oa-section > h2 { font-size: 28px !important; }
   .oa-main { gap: 48px; padding-top: 24px; }

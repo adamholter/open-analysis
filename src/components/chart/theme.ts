@@ -105,11 +105,10 @@ export function insideLabels(width: () => number | undefined, opts: { moveOverla
   };
 }
 
-/** Open Analysis: value labels inside a light bar (OpenAI's near-white in Analysis dark) switch to dark text. */
+/** AA-style labels stay white on saturated lab colors; only very light fills use dark text. */
 export function insideLabelOn(color: string): { color: string; textBorderWidth: number } | undefined {
   const m = /^#([0-9a-f]{6})$/i.exec(color); if (!m) return undefined;
-  const n = parseInt(m[1], 16), l = (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255;
-  return l > 0.62 ? { color: "#111111", textBorderWidth: 0 } : undefined;
+  return { color: luminance(color) > 0.55 ? "#111111" : "#FFFFFF", textBorderWidth: 0 };
 }
 
 /** A lab color pushed toward the palette's neutral: how non-highlighted marks recede. */
