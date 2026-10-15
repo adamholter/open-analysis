@@ -53,9 +53,12 @@ describe("subscription cost basis", () => {
     expect(prices.get("b")!.ratio).toBeCloseTo(0.1, 6);
     expect(prices.has("c")).toBe(false);
   });
-  it("leaves costs untouched unless the index asks for the subscription basis", () => {
-    expect(costs(base)).toEqual({ "a@max": 12, "a@high": 4, "b@xhigh": 7, "c@default": 5 });
-    expect(computeIndex(snap(), base).ranked.every((r) => r.costPlan === undefined)).toBe(true);
+  it("leaves costs untouched when the index asks for the API basis", () => {
+    expect(costs({ ...base, costBasis: "api" })).toEqual({ "a@max": 12, "a@high": 4, "b@xhigh": 7, "c@default": 5 });
+    expect(computeIndex(snap(), { ...base, costBasis: "api" }).ranked.every((r) => r.costPlan === undefined)).toBe(true);
+  });
+  it("prices by subscription unless the index asks for API", () => {
+    expect(costs(base)).toEqual(costs({ ...base, costBasis: "subscription" }));
   });
   it("scales every effort of a subscribed model and keeps API cost for models without a plan", () => {
     const ranked = computeIndex(snap(), { ...base, costBasis: "subscription" }).ranked;
@@ -70,14 +73,20 @@ describe("subscription cost basis", () => {
     // The frontier follows the adjusted costs: the cheapest subscribed effort now undercuts the unsubscribed model.
     expect(ranked.filter((r) => r.onFrontier).map((r) => r.variant.id).sort()).toEqual(["a@high", "a@max"]);
   });
+  it("takes a curated ratio as is, without a token mix or list price", () => {
+    const snapshot = snap();
+    snapshot.observations.push({ ...snapshot.observations.find((o) => o.benchmarkId === SUBSCRIPTION_BENCHMARK)!, variantId: "c@default", value: 0.5, details: { plan: "Curated", ratio: 1 / 6, confidence: "medium", plans: [] } });
+    expect(subscriptionPrices(snapshot).get("c")).toMatchObject({ ratio: 1 / 6, plan: "Curated" });
+  });
   it("survives the client snapshot, which drops other scraper details", () => {
     expect(subscriptionPrices(clientSnapshot(snap())).get("a")!.ratio).toBeCloseTo(0.01, 6);
   });
   it("round-trips through share links, omitting the default", () => {
     expect(encodeIndex(base)).not.toContain("costbasis");
-    const encoded = encodeIndex({ ...base, costBasis: "subscription" });
-    expect(encoded).toContain("costbasis=subscription");
-    expect(decodeIndex(encoded, "t")!.costBasis).toBe("subscription");
-    expect(decodeIndex(encoded.replace("subscription", "nope"), "t")!.costBasis).toBeUndefined();
+    expect(encodeIndex({ ...base, costBasis: "subscription" })).not.toContain("costbasis");
+    const encoded = encodeIndex({ ...base, costBasis: "api" });
+    expect(encoded).toContain("costbasis=api");
+    expect(decodeIndex(encoded, "t")!.costBasis).toBe("api");
+    expect(decodeIndex(encoded.replace("api", "nope"), "t")!.costBasis).toBeUndefined();
   });
 });

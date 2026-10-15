@@ -5,7 +5,9 @@ export const SUBSCRIPTION_BENCHMARK = "subscription-token-price";
 
 /** How cost per task is priced: at API list prices, or at what a subscriber to the lab's plan pays. */
 export type CostBasis = "api" | "subscription";
-export const COST_BASES: { id: CostBasis; name: string }[] = [{ id: "api", name: "API" }, { id: "subscription", name: "Subscription" }];
+export const COST_BASES: { id: CostBasis; name: string }[] = [{ id: "subscription", name: "Subscription" }, { id: "api", name: "API" }];
+/** Subscription pricing is the default; `costBasis` is only stored when someone picks API. Without plan data in the snapshot everything is API-priced. */
+export const effectiveBasis = (basis: CostBasis | undefined, hasPrices = true): CostBasis => hasPrices ? basis ?? "subscription" : "api";
 export const isCostBasis = (value: string): value is CostBasis => COST_BASES.some((b) => b.id === value);
 
 /** Token shares of the workload a plan's allowance was converted with; they sum to 1. */
@@ -13,6 +15,10 @@ export interface TokenMix { cache: number; input: number; output: number; cacheW
 
 export interface SubscriptionDetails {
   plan: string;
+  /** Set when the share of API price is known directly (a published plan allowance), instead of derived from `mix` and a list price. */
+  ratio?: number;
+  /** Where a curated figure came from. */
+  source?: string;
   feeUsd?: number;
   confidence: string;
   mix: TokenMix;
@@ -58,6 +64,7 @@ export function subscriptionPrices(snapshot: Snapshot): Map<string, Subscription
     if (o.benchmarkId !== SUBSCRIPTION_BENCHMARK || !positive(o.value)) continue;
     const d = o.details as unknown as SubscriptionDetails | undefined;
     const modelId = variants.get(o.variantId)?.modelId ?? o.variantId.split("@")[0];
+    if (positive(d?.ratio)) { out.set(modelId, { ratio: d.ratio, plan: d.plan, feeUsd: d.feeUsd, confidence: d.confidence }); continue; }
     const prices = d?.listPrice ?? aaPrices.get(modelId);
     if (!d?.mix || !prices) continue;
     const api = blendedApiPrice(prices, d.mix);

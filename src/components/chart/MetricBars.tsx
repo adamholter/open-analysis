@@ -23,7 +23,9 @@ const value = (p: ScatterPoint) => p.raw ?? p.x;
  * applies: best mode shows one bar per model, all mode shows every effort. Capped at `limit`
  * points by index score so the axis stays readable.
  */
-export function MetricBars({ pts: allPoints, labs, better, xName, formatValue, height = 400, aria, title, actions, limit = 24, exportName, anchor, linkParams, labelScale }: {
+export function MetricBars({ pts: allPoints, labs, better, xName, formatValue, height = 400, aria, title, actions, limit = 24, exportName, anchor, linkParams, labelScale, bestFirst }: {
+  /** Custom formulas: draw the best value first (descending when higher is better) rather than always ascending. */
+  bestFirst?: boolean;
   pts: ScatterPoint[]; labs: Lab[]; better: "lower" | "higher"; xName: string; formatValue: (x: number) => string;
   labelScale?: number; height?: number; aria: string; title?: ReactNode; actions?: ReactNode; limit?: number; exportName: string; anchor?: string; linkParams?: ChartLinkParams;
 }) {
@@ -35,15 +37,15 @@ export function MetricBars({ pts: allPoints, labs, better, xName, formatValue, h
   const exportControl = useRef<ChartExportHandle>(null);
   const contextPick = useRef(context.pointMenu);
   useEffect(() => { contextPick.current = context.pointMenu; });
-  const [narrow, setNarrow] = useState(false);
-  useEffect(() => { const el = wrap.current; if (!el) return; const ro = new ResizeObserver(([e]) => setNarrow(e.contentRect.width < 560)); ro.observe(el); return () => ro.disconnect(); }, []);
+  const [width, setWidth] = useState<number>(), narrow = width !== undefined && width < 560;
+  useEffect(() => { const el = wrap.current; if (!el) return; const ro = new ResizeObserver(([e]) => setWidth(Math.round(e.contentRect.width / 8) * 8)); ro.observe(el); return () => ro.disconnect(); }, []);
   const expand = useChartExpand(exportName);
-  const cap = Math.min(new Set(pts.map((p) => p.r.model.id)).size, expand.expanded ? (narrow ? 20 : Math.max(limit, 40)) : narrow ? Math.min(12, limit) : limit);
+  const cap = Math.max(new Set(pts.map((p) => p.r.model.id)).size, expand.expanded ? (narrow ? 20 : Math.max(limit, 40)) : narrow ? Math.min(12, limit) : limit);
   const pal = useChartPalette();
   const hl = useHighlight();
   const highlight = hl?.items;
-  const bars = useMemo(() => selectBars(pts, better, cap, highlight), [pts, better, cap, highlight]);
-  const option = useMemo<EChartsOption>(() => barsOption({ bars, labs, xName, formatValue, pal, narrow, highlight, labelScale: fontScale }), [bars, labs, xName, formatValue, narrow, pal, highlight, fontScale]);
+  const bars = useMemo(() => { const ordered = selectBars(pts, better, cap, highlight); return bestFirst && better === "higher" ? ordered.reverse() : ordered; }, [pts, better, cap, highlight, bestFirst]);
+  const option = useMemo<EChartsOption>(() => barsOption({ bars, labs, xName, formatValue, pal, narrow, highlight, labelScale: fontScale, width, height: Math.round(height * (pal.size?.height ?? 1)) }), [bars, labs, xName, formatValue, narrow, pal, highlight, fontScale, width, height]);
   const pick = useRef<(p: ScatterPoint) => void>(() => {});
   useEffect(() => { pick.current = (p) => { if (hl) hl.set(togglePoint(hl.items, pts, p)); }; }, [hl, pts]);
   const { ref, chart } = useEChart(option, [option], (c) => {
@@ -65,7 +67,7 @@ export function MetricBars({ pts: allPoints, labs, better, xName, formatValue, h
           n: chartLabel(p.r), v: value(p), c, d, dc: dimColor(c, LIGHT_PALETTE), dd: dimColor(d, DARK_PALETTE),
           m: p.r.model.id, mn: p.r.model.name, id: p.r.variant.id, e: p.r.variant.effort,
           h: focusedModels.has(p.r.model.id), a: featured.has(p.r.variant.id),
-          t: `<b>${escapeHtml(chartLabel(p.r))}</b><div style="font-family:'JetBrains Mono',monospace;margin-top:4px">${escapeHtml(compact(formatValue)(value(p)))} · index ${p.r.score.toFixed(1)}</div>`,
+          t: `<b>${escapeHtml(chartLabel(p.r))}</b><div style="font-family:'JetBrains Mono',monospace;margin-top:4px">${compact(formatValue)(value(p))} · index ${p.r.score.toFixed(1)}</div>`,
         };
       }),
     });
@@ -73,7 +75,7 @@ export function MetricBars({ pts: allPoints, labs, better, xName, formatValue, h
   return (
     <>{expand.backdrop}<div ref={wrap} id={anchor} className={`max-sm:-mx-4 scroll-mt-20 ${expand.expanded ? "chart-expanded" : ""}`} role={expand.expanded ? "dialog" : undefined} aria-modal={expand.expanded || undefined} aria-label={expand.expanded ? exportName : undefined}>
       <div className={`chart-toolbar flex flex-wrap items-center justify-end gap-1 max-sm:px-4 min-h-8 ${title || expand.expanded ? "mb-1" : "-mb-8 relative z-10 pointer-events-none"}`}>{(title || expand.expanded) ? <div className="min-w-0 mr-auto">{title ?? <h2 className="text-[22px]">{exportName}</h2>}<HighlightList /></div> : <div className="min-w-0 mr-auto"><HighlightList /></div>}<div className="flex items-center gap-1 pointer-events-auto"><HighlightMenu label={exportName} />{visibility.canUndo && <button type="button" className="cap hover:text-ink" onClick={visibility.undo} aria-label="Undo chart removal">Undo</button>}{actions}{anchor && <ChartLink id={anchor} name={exportName} params={{ ...effectiveLinkParams, hidden: visibility.hidden }} />}<ChartExport ref={exportControl} name={exportName} frame getHtml={getHtml} getSvg={() => chart.current?.renderToSVGString()} getRows={() => bars.map((p, i) => ({ rank: i + 1, model: p.r.model.name, effort: p.r.variant.effort, [xName]: +value(p).toFixed(4), index_score: +p.r.score.toFixed(2) }))} />{expand.button}</div></div>
-      <div className={expand.expanded ? "flex-1 min-h-0" : undefined}><div ref={ref} role="img" aria-label={aria} tabIndex={0} onContextMenu={context.onContextMenu} onKeyDown={context.onKeyDown} style={{ width: "100%", height: expand.expanded ? "100%" : height, overflow: "hidden", position: "relative", isolation: "isolate" }} /></div>
+      <div className={expand.expanded ? "flex-1 min-h-0" : undefined}><div ref={ref} role="img" aria-label={aria} tabIndex={0} onContextMenu={context.onContextMenu} onKeyDown={context.onKeyDown} style={{ width: "100%", height: expand.expanded ? "100%" : Math.round(height * (pal.size?.height ?? 1)), overflow: "hidden", position: "relative", isolation: "isolate" }} /></div>
       <ChartContextMenu exportControl={exportControl} state={context.menu} close={context.close} name={exportName} points={bars} visibility={visibility} chart={chart} wrap={wrap} expanded={expand.expanded} anchor={anchor} />
     </div></>
   );

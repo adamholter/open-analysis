@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Source_Serif_4 } from "next/font/google";
 import localFont from "next/font/local";
 import Link from "next/link";
-import { Shell } from "@/components/oa/Shell";
+import { Shell, THEME_SCRIPT, ThemeToggle } from "@/components/oa/Shell";
 import { snapshot } from "@/lib/data";
 import { openIndexView } from "@/lib/views";
 import { REPO } from "@/lib/site";
@@ -31,6 +31,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="en" className={`${switzer.variable} ${sourceSerif.variable}`} suppressHydrationWarning>
       <body>
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
         <Shell models={models}>
           <header className="oa-header">
             <div className="oa-header-in">
@@ -43,7 +44,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
                 <Link href="/methodology">Methodology</Link>
                 <a href={REPO}>GitHub</a>
               </nav>
-              <Link href="/contribute" className="oa-cta">Add a benchmark</Link>
+              <div className="oa-header-end"><ThemeToggle /><Link href="/contribute" className="oa-cta">Add a benchmark</Link></div>
             </div>
           </header>
           {children}

@@ -1,6 +1,6 @@
 import type { EChartsOption } from "echarts";
 import type { Lab } from "../../data/types";
-import { CONTAIN_AXIS_LABELS, dimColor, markColor, type ChartPalette } from "./theme";
+import { CONTAIN_AXIS_LABELS, dimColor, insideLabelOn, markColor, markSize, textSize, type ChartPalette } from "./theme";
 import { chartLabel } from "../../lib/metrics";
 import { featuredPoints, highlightedModels, type ScatterPoint } from "./scatter-option";
 
@@ -16,13 +16,11 @@ const effortLabel = (effort: string) => ({ none: "N", minimal: "Min", low: "L", 
 /** Axis rows for model groups: efforts stay on the first row, one model name sits under each group. */
 export function barLayout<T extends BarLayoutLabel>(bars: T[]): { entries: (T | null)[]; effortLabels: string[]; modelLabels: string[] } {
   const entries: (T | null)[] = [], effortLabels: string[] = [], modelLabels: string[] = [];
-  // Open Analysis: one bar per model packs tight like AA; spacers only separate multi-effort groups.
-  const grouped = bars.some((b, i) => i > 0 && bars[i - 1].modelId === b.modelId);
   for (let start = 0; start < bars.length;) {
     let end = start + 1;
     while (end < bars.length && bars[end].modelId === bars[start].modelId) end++;
     const group = bars.slice(start, end);
-    if (entries.length && grouped) { entries.push(null); effortLabels.push(""); modelLabels.push(""); }
+    if (entries.length) { entries.push(null); effortLabels.push(""); modelLabels.push(""); }
     const center = entries.length + Math.floor((group.length - 1) / 2);
     for (const bar of group) {
       entries.push(bar);
@@ -75,8 +73,7 @@ export const compact = (format: (x: number) => string) => (v: number) => {
 };
 
 /** Keep complete model groups, cap by model score, then draw groups and bars in ascending metric order. */
-/** Open Analysis: best bar first (AA order) — higher-is-better descends, lower-is-better ascends. */
-export function selectBars(pts: ScatterPoint[], better: "lower" | "higher", modelCap: number, highlight: string[] = []): ScatterPoint[] {
+export function selectBars(pts: ScatterPoint[], _better: "lower" | "higher", modelCap: number, highlight: string[] = []): ScatterPoint[] {
   const featured = featuredPoints(pts, highlight), pinned = new Set(featured.map((p) => p.r.model.id));
   const groups = new Map<string, ScatterPoint[]>();
   for (const p of pts) (groups.get(p.r.model.id) ?? groups.set(p.r.model.id, []).get(p.r.model.id)!).push(p);
@@ -93,32 +90,50 @@ export function selectBars(pts: ScatterPoint[], better: "lower" | "higher", mode
   const kept = [...groups.entries()].filter(([id]) => keptModels.has(id));
   kept.sort(([, a], [, b]) => {
     const maxA = Math.max(...a.map(value)), maxB = Math.max(...b.map(value));
-    return (better === "higher" ? maxB - maxA : maxA - maxB) || a[0].r.model.name.localeCompare(b[0].r.model.name) || a[0].r.model.id.localeCompare(b[0].r.model.id);
+    return maxA - maxB || a[0].r.model.name.localeCompare(b[0].r.model.name) || a[0].r.model.id.localeCompare(b[0].r.model.id);
   });
-  return kept.flatMap(([, group]) => [...group].sort((a, b) => (better === "higher" ? value(b) - value(a) : value(a) - value(b)) || b.r.score - a.r.score || a.r.variant.id.localeCompare(b.r.variant.id)));
+  return kept.flatMap(([, group]) => [...group].sort((a, b) => value(a) - value(b) || b.r.score - a.r.score || a.r.variant.id.localeCompare(b.r.variant.id)));
 }
 
 /** The ECharts option behind MetricBars — shared verbatim by the browser chart and /og rasterizer. */
-export function barsOption({ bars, labs, xName, formatValue, pal, narrow, highlight, labelScale }: {
+/**
+ * Where bar values fit: inside the bar, above it, or turned vertical when even the category slot
+ * is too narrow. JetBrains Mono advances 0.6em per glyph; a lone bar series fills 80% of its slot.
+ */
+export function barLabelFit(texts: string[], fontSize: number, slots: number, plotWidth: number, maxBar: number): "inside" | "above" | "vertical" {
+  const slot = plotWidth / Math.max(1, slots), bar = Math.min(maxBar, slot * 0.8);
+  const widest = Math.max(0, ...texts.map((text) => text.length)) * fontSize * 0.6;
+  return widest + 4 <= bar ? "inside" : widest <= slot ? "above" : "vertical";
+}
+
+export function barsOption({ bars, labs, xName, formatValue, pal, narrow, highlight, labelScale, width, height = 400 }: {
   bars: ScatterPoint[]; labs: Lab[]; xName: string; formatValue: (x: number) => string; pal: ChartPalette; narrow: boolean; highlight?: string[]; labelScale?: number;
+  /** Chart size in px; inside labels need it to know whether they fit. Unknown width means they sit above the bars. */
+  width?: number; height?: number;
 }): EChartsOption {
-  const fontScale = normalizeLabelScale(labelScale);
+  const t = textSize(pal), fontScale = normalizeLabelScale(labelScale) * t;
   const hl = highlightedModels(highlight ?? []), on = hl.size > 0, featured = new Set(featuredPoints(bars, highlight ?? []).map((p) => p.r.variant.id));
   const color = new Map(labs.map((l) => [l.id, l.color]));
   const layout = barLayout(bars.map((p) => ({ modelId: p.r.model.id, modelName: p.r.model.name, effort: p.r.variant.effort, label: chartLabel(p.r), point: p })));
-  const single = layout.effortLabels.every((l) => !l), rotate = single && layout.entries.length > 8 ? 45 : 0;
+  const fmt = compact(formatValue), fontSize = (narrow ? 9 : 10) * fontScale, maxBar = 28 * markSize(pal);
+  const fit = width === undefined ? "above" : barLabelFit(bars.map((p) => fmt(value(p))), fontSize, layout.entries.length, width - 52 * t - 30, maxBar);
+  const inside = pal.style?.barLabels === "inside" && fit === "inside";
+  // Bars shorter than their value (y max is at least the top bar, so this errs short) show it above.
+  const top = Math.max(...bars.map(value)), plot = height - 52 - 100 * t, short = (p: ScatterPoint) => (value(p) / top) * plot * 0.9 < fontSize + 14;
+  // Dimmed bars are too pale for white text, so their values sit above in grey.
+  const above = { position: "top" as const, distance: 5, color: pal.ink, textBorderWidth: 0, ...(fit === "vertical" ? { rotate: 90, align: "left" as const, verticalAlign: "middle" as const } : { rotate: 0 }) };
   return {
-    grid: { left: 52, right: 16, top: 52, bottom: rotate ? 120 : 100, ...CONTAIN_AXIS_LABELS },
+    grid: { left: 52 * t, right: 16, top: 52, bottom: 100 * t, ...CONTAIN_AXIS_LABELS },
     xAxis: [
       { type: "category", data: layout.effortLabels.map((label, i) => on && layout.entries[i] && featured.has(layout.entries[i]!.point.r.variant.id) ? { value: label, textStyle: { color: pal.ink, fontWeight: 600 } } : label), axisLabel: { rotate: 0, interval: 0, hideOverlap: true, fontSize: 9.5 * fontScale, color: pal.ink2, fontFamily: pal.fonts?.sans ?? "var(--font-inter), Inter, sans-serif", width: 84 * fontScale, overflow: "truncate" }, axisTick: { show: false }, axisLine: { show: false } },
-      { type: "category", data: layout.modelLabels.map((label, i) => { const p = layout.entries[i]?.point, featuredModel = p && bars.some((bar) => bar.r.model.id === p.r.model.id && featured.has(bar.r.variant.id)); return on && label && p && (hl.has(p.r.model.id) || featuredModel) ? { value: label, textStyle: { color: pal.ink, fontWeight: 600 } } : label; }), position: "bottom", offset: single ? 0 : 32, axisLabel: { rotate, interval: 0, hideOverlap: !rotate, margin: rotate ? 10 : 4, fontSize: 9.5 * fontScale, color: pal.ink, fontWeight: 500, fontFamily: pal.fonts?.sans ?? "var(--font-inter), Inter, sans-serif", width: (rotate ? 120 : 100) * fontScale, overflow: "truncate" }, axisTick: { show: false }, axisLine: { show: false } },
+      { type: "category", data: layout.modelLabels.map((label, i) => { const p = layout.entries[i]?.point, featuredModel = p && bars.some((bar) => bar.r.model.id === p.r.model.id && featured.has(bar.r.variant.id)); return on && label && p && (hl.has(p.r.model.id) || featuredModel) ? { value: label, textStyle: { color: pal.ink, fontWeight: 600 } } : label; }), position: "bottom", offset: 32 * t, axisLabel: { rotate: 0, interval: 0, hideOverlap: true, margin: 4, fontSize: 9.5 * fontScale, color: pal.ink, fontWeight: 500, fontFamily: pal.fonts?.sans ?? "var(--font-inter), Inter, sans-serif", width: 100 * fontScale, overflow: "truncate" }, axisTick: { show: false }, axisLine: { show: false } },
     ],
-    yAxis: { type: "value", name: xName, nameTextStyle: { color: pal.grey, fontSize: 11, align: "left", padding: [0, 0, 0, -30] }, axisLabel: { formatter: (v: number) => compact(formatValue)(v) } },
+    yAxis: { type: "value", name: xName, nameTextStyle: { color: pal.grey, fontSize: 11 * t, align: "left", padding: [0, 0, 0, -30 * t] }, axisLabel: { formatter: (v: number) => compact(formatValue)(v) } },
     tooltip: { trigger: "item", confine: true, formatter: (p: unknown) => { const d = (p as { data?: { point?: ScatterPoint } }).data?.point; return d ? `<div style="font-weight:600">${escapeHtml(chartLabel(d.r))}</div><div style="font-family:var(--font-jetbrains);margin-top:4px">${escapeHtml(formatValue(value(d)))} · index ${d.r.score.toFixed(1)}</div>` : ""; } },
     series: [{
-      type: "bar", id: "bars", barMaxWidth: 40, barCategoryGap: single ? "22%" : "20%",
-      data: layout.entries.map((entry) => { if (!entry) return { value: null, itemStyle: { color: "transparent" } }; const p = entry.point, c = markColor(color.get(p.r.model.labId), pal, p.r.model.labId), dim = on && !hl.has(p.r.model.id); return { value: value(p), point: p, extra: p, itemStyle: { color: dim ? dimColor(c, pal) : c, opacity: dim ? 0.6 : 1, borderRadius: [pal.style?.barRadius ?? 2, pal.style?.barRadius ?? 2, 0, 0] }, label: dim ? { color: pal.grey } : on && featured.has(p.r.variant.id) ? { fontWeight: 700 } : undefined }; }),
-      label: { show: true, ...(pal.style?.barLabels === "inside" ? { position: "insideTop" as const, distance: 6, color: "#FFFFFF", textBorderColor: "rgba(0,0,0,.18)", textBorderWidth: 1.5 } : { position: "top" as const, color: pal.ink }), fontSize: (narrow ? 9 : 10) * fontScale, fontFamily: pal.fonts?.mono ?? "var(--font-jetbrains), monospace", formatter: (p: { value?: unknown }) => compact(formatValue)(Number(p.value)) }, labelLayout: { hideOverlap: true },
+      type: "bar", id: "bars", barMaxWidth: maxBar,
+      data: layout.entries.map((entry) => { if (!entry) return { value: null, itemStyle: { color: "transparent" } }; const p = entry.point, c = markColor(color.get(p.r.model.labId), pal, p.r.model.labId), dim = on && !hl.has(p.r.model.id); return { value: value(p), point: p, extra: p, itemStyle: { color: dim ? dimColor(c, pal) : c, opacity: dim ? 0.6 : 1, borderRadius: [pal.style?.barRadius ?? 2, pal.style?.barRadius ?? 2, 0, 0] }, label: dim ? { ...above, color: pal.grey } : inside && short(p) ? above : { ...(inside ? insideLabelOn(c) : {}), ...(on && featured.has(p.r.variant.id) ? { fontWeight: 700 } : {}) } }; }),
+      label: { show: true, ...(inside ? { position: "insideTop" as const, distance: 6, color: "#FFFFFF", textBorderColor: "rgba(0,0,0,.18)", textBorderWidth: 1.5 } : above), fontSize, fontFamily: pal.fonts?.mono ?? "var(--font-jetbrains), monospace", formatter: (p: { value?: unknown }) => fmt(Number(p.value)) }, labelLayout: { hideOverlap: true },
       animationDurationUpdate: 350,
     }],
   };

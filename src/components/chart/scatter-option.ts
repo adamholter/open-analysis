@@ -1,13 +1,13 @@
 import type { EChartsOption } from "echarts";
 import type { Lab } from "../../data/types";
 import type { RankedVariant } from "../../engine";
-import { CONTAIN_AXIS_LABELS, dimColor, markColor, markLabel, type ChartPalette } from "./theme";
+import { CONTAIN_AXIS_LABELS, dimColor, markColor, markLabel, markSize, textSize, type ChartPalette } from "./theme";
 import { scatterLabelLayout } from "./scatter-label-layout";
 import { chartLabel } from "../../lib/metrics";
 import { labelScale } from "./label-size";
 
 export interface ScatterPoint { x: number; r: RankedVariant; /** untransformed value for tooltips/export when x is transformed */ raw?: number }
-export interface ScatterView { labelScale?: number; scale?: "log" | "linear"; density: number; frontier: boolean; links: boolean; /** The user explicitly toggled the frontier rather than saving an old default. */ frontierChosen?: boolean; /** Dashed axis guides for highlighted efforts (default on). */ guides?: boolean; kind?: "scatter" | "bars"; /** The user picked `kind` (vs. the chart default). */ kindChosen?: boolean }
+export interface ScatterView { labelScale?: number; scale?: "log" | "linear"; density: number; frontier: boolean; links: boolean; /** The user explicitly toggled the frontier rather than saving an old default. */ frontierChosen?: boolean; /** Dashed axis guides for highlighted efforts (default on). */ guides?: boolean; kind?: "scatter" | "bars"; /** The user picked `kind` (vs. the chart default). */ kindChosen?: boolean; /** Advanced: a custom formula that replaces the chart's metric (src/lib/formula.ts), and which direction is better. */ formula?: string; formulaBetter?: "higher" | "lower" }
 /**
  * Emphasis for chosen models. `items` are model ids (feature that model's best effort) or variant ids
  * (feature exactly that effort); a model may have several featured efforts. Everything else recedes
@@ -97,11 +97,13 @@ function escapeHtml(s: string) { return s.replace(/[&<>"']/g, (c) => ({ "&": "&a
 /** The "most attractive quadrant": from the better axis edge to the median metric, and from the median score up. */
 function quadrantArea(pts: ScatterPoint[], better: "lower" | "higher", scale: "linear" | "log" | "time") {
   const median = (v: number[]) => { const s = [...v].sort((a, b) => a - b), m = s.length >> 1; return s.length % 2 ? s[m] : scale === "log" ? Math.sqrt(s[m - 1] * s[m]) : (s[m - 1] + s[m]) / 2; };
+  // "min"/"max" mean the data extent, but the axis pads beyond it; overshoot so the area is clipped at the grid edges.
+  const edge = scale === "log" ? [1e-12, 1e12] : [-1e12, 1e12];
   const mx = median(pts.map((p) => p.x)), my = median(pts.map((p) => p.r.score));
-  return [{ xAxis: better === "lower" ? "min" : mx, yAxis: my }, { xAxis: better === "lower" ? mx : "max", yAxis: "max" }] as [{ xAxis: number | string; yAxis: number | string }, { xAxis: number | string; yAxis: number | string }];
+  return [{ xAxis: better === "lower" ? edge[0] : mx, yAxis: my }, { xAxis: better === "lower" ? mx : edge[1], yAxis: 1e9 }] as [{ xAxis: number | string; yAxis: number | string }, { xAxis: number | string; yAxis: number | string }];
 }
 
-export function scatterOption({ pts, labs, better, xName, xShort, xUnit = "", scale = "linear", formatX, formatValue, view, pal, narrow, hasTitle = false, tooltipExtra, width, height, highlight }: {
+export function scatterOption({ pts, labs, better, xName, xShort, xUnit = "", scale = "linear", formatX, formatValue, view, pal, narrow, hasTitle = false, tooltipExtra, width, height, highlight, fallen }: {
   pts: ScatterPoint[]; labs: Lab[]; better: "lower" | "higher"; xName: string; xShort?: string; xUnit?: string;
   scale?: "linear" | "log" | "time"; formatX: (x: number) => string; formatValue?: (x: number) => string;
   view: ScatterView; pal: ChartPalette; narrow: boolean; hasTitle?: boolean; tooltipExtra?: (p: ScatterPoint) => string;
@@ -109,15 +111,17 @@ export function scatterOption({ pts, labs, better, xName, xShort, xUnit = "", sc
   width?: () => number | undefined;
   height?: () => number | undefined;
   highlight?: Highlight;
+  /** Marks the gravity easter egg has dropped: kept in the data so the axes hold still, drawn by GravityLayer instead. */
+  fallen?: Set<string>;
 }): EChartsOption {
   const frontier = frontierOf(pts, better);
-  const fontScale = labelScale(view.labelScale);
+  const t = textSize(pal), m = markSize(pal), fontScale = labelScale(view.labelScale) * t;
   const color = new Map(labs.map((l) => [l.id, markColor(l.color, pal, l.id)]));
   const onFrontier = new Set(frontier.map((p) => p.r.variant.id));
   const labeled = pickLabels(pts, better, narrow ? view.density ** 2 : view.density);
   const byModel = new Map<string, ScatterPoint[]>();
   for (const p of pts) (byModel.get(p.r.model.id) ?? byModel.set(p.r.model.id, []).get(p.r.model.id)!).push(p);
-  const links = view.links ? [...byModel.values()].filter((v) => v.length > 1).map((v) => [...v].sort((a, b) => a.x - b.x)) : [];
+  const links = view.links && !fallen?.size ? [...byModel.values()].filter((v) => v.length > 1).map((v) => [...v].sort((a, b) => a.x - b.x)) : [];
   const ys = pts.map((p) => p.r.score);
   const yMin = Math.max(0, Math.floor((Math.min(...ys, 100) - 6) / 5) * 5), yMax = Math.min(100, Math.ceil((Math.max(...ys, 0) + 4) / 5) * 5);
   // ECharts resolves equal-sized overlapping labels in data order. Give the chosen labels their
@@ -128,13 +132,14 @@ export function scatterOption({ pts, labs, better, xName, xShort, xUnit = "", sc
   const featured = new Set(featuredPoints(pts, highlight?.items ?? []).map((p) => p.r.variant.id));
   const markOf = (p: ScatterPoint) => {
     const id = p.r.variant.id, c = color.get(p.r.model.labId), front = view.frontier && onFrontier.has(id);
-    if (!on) { const show = labeled.has(id); return { itemStyle: { color: c, borderColor: front ? pal.ink : pal.bg, borderWidth: 1.5, opacity: show || front ? 1 : 0.8 }, symbolSize: front ? 11 : 9, label: { show } }; }
-    if (!hl.has(p.r.model.id)) return { itemStyle: { color: dimColor(c, pal), borderColor: pal.bg, borderWidth: 1, opacity: pal.dark ? 0.55 : 0.6 }, symbolSize: 7, label: { show: false }, emphasis: { label: { show: true } } };
+    if (fallen?.has(id)) return { itemStyle: { opacity: 0 }, symbolSize: 0, label: { show: false }, silent: true };
+    if (!on) { const show = labeled.has(id); return { itemStyle: { color: c, borderColor: front ? pal.ink : pal.bg, borderWidth: 1.5, opacity: show || front ? 1 : 0.8 }, symbolSize: (front ? 11 : 9) * m, label: { show } }; }
+    if (!hl.has(p.r.model.id)) return { itemStyle: { color: dimColor(c, pal), borderColor: pal.bg, borderWidth: 1, opacity: pal.dark ? 0.55 : 0.6 }, symbolSize: 7 * m, label: { show: false }, emphasis: { label: { show: true } } };
     const isBest = featured.has(p.r.variant.id);
     const label = isBest
       ? { show: true, fontWeight: 600, color: pal.ink }
       : { show: p.r.variant.effort !== "default", formatter: p.r.variant.effort.toUpperCase(), fontSize: 9 * fontScale, color: pal.grey, backgroundColor: "transparent", textBorderColor: pal.bg, textBorderWidth: 3, distance: 5 };
-    return { itemStyle: { color: c, borderColor: pal.ink, borderWidth: isBest ? 1.8 : 1.2, opacity: 1 }, symbolSize: isBest ? 12 : 9, label, z: 10 };
+    return { itemStyle: { color: c, borderColor: pal.ink, borderWidth: isBest ? 1.8 : 1.2, opacity: 1 }, symbolSize: (isBest ? 12 : 9) * m, label, z: 10 };
   };
   // Chosen marks draw last so they sit on top and win label overlap.
   const drawOrder = on ? [...ordered].sort((a, b) => Number(hl.has(a.r.model.id)) - Number(hl.has(b.r.model.id))) : ordered;
@@ -151,27 +156,27 @@ export function scatterOption({ pts, labs, better, xName, xShort, xUnit = "", sc
       emphasis: { scale: 1.4, label: { show: true, fontWeight: 600 } },
       clip: true, universalTransition: { enabled: false },
       // AA-style themes shade the better corner: better-than-median metric and above-median score.
-      ...(pal.style?.quadrant && scale !== "time" && pts.length >= 4 ? { markArea: { silent: true, z: 0, itemStyle: { color: pal.style.quadrant }, label: { show: false }, data: [quadrantArea(pts, better, scale)] } } : {}),
+      ...(pal.style?.quadrant && scale !== "time" && pts.length >= 4 ? { markArea: { silent: true, z: -1, itemStyle: { color: pal.style.quadrant }, label: { show: false }, data: [quadrantArea(pts, better, scale)] } } : {}),
       animationDurationUpdate: 350, animationEasingUpdate: "cubicOut",
     },
   ];
   const name = narrow && xShort ? xShort : xName;
   return {
     animation: true,
-    grid: { ...(narrow ? { left: 38, right: 12, top: hasTitle ? 24 : 48, bottom: 40 } : { left: 48, right: 130, top: hasTitle ? 24 : 48, bottom: 44 }), ...CONTAIN_AXIS_LABELS },
+    grid: { ...(narrow ? { left: 38 * t, right: 12, top: hasTitle ? 24 : 48, bottom: 40 * t } : { left: 48 * t, right: 130 * t, top: hasTitle ? 24 * t : 48, bottom: 44 * t }), ...CONTAIN_AXIS_LABELS },
     xAxis: {
       type: scale === "linear" ? "value" : scale, name, nameLocation: "end", nameGap: 8, scale: scale === "linear",
-      nameTextStyle: { color: pal.grey, fontSize: 11, align: "right", verticalAlign: "top", padding: [26, 0, 0, 0] },
+      nameTextStyle: { color: pal.grey, fontSize: 11 * t, align: "right", verticalAlign: "top", padding: [26 * t, 0, 0, 0] },
       // Log/time axes otherwise print odd extent values ($0.007, 12.78s) that collide with round ticks.
       axisLabel: scale === "time" ? { hideOverlap: true, showMinLabel: false, showMaxLabel: false } : { formatter: (v: number) => formatX(v), hideOverlap: true, showMinLabel: scale !== "log", showMaxLabel: scale !== "log" },
       ...(scale === "log" ? { min: (e: { min: number }) => e.min / 1.5, max: (e: { max: number }) => e.max * 1.8 } : {}),
     } as EChartsOption["xAxis"],
-    yAxis: { type: "value", name: "Index score", nameTextStyle: { color: pal.grey, fontSize: 11, align: "left", padding: [0, 0, 0, narrow ? -22 : -30] }, min: yMin, max: yMax },
+    yAxis: { type: "value", name: "Index score", nameTextStyle: { color: pal.grey, fontSize: 11 * t, align: "left", padding: [0, 0, 0, (narrow ? -22 : -30) * t] }, min: yMin, max: yMax },
     tooltip: {
       trigger: "item", confine: true, formatter: (p: unknown) => {
         const d = (p as { data?: { extra?: ScatterPoint } }).data?.extra; if (!d) return "";
         const lab = labs.find((l) => l.id === d.r.model.labId)?.name ?? d.r.model.labId;
-        return `<div style="font-weight:600">${escapeHtml(d.r.variant.sourceModel?.name ?? chartLabel(d.r))}</div><div style="color:${pal.grey};font-size:11px">${escapeHtml(lab)}${view.frontier && onFrontier.has(d.r.variant.id) ? " · on the frontier" : ""}</div><div style="font-family:var(--font-jetbrains);margin-top:4px">${d.r.score.toFixed(1)} · ${escapeHtml((formatValue ?? formatX)(d.raw ?? d.x))}${xUnit ? ` ${xUnit}` : ""}${tooltipExtra ? escapeHtml(tooltipExtra(d)) : ""}</div>`;
+        return `<div style="font-weight:600">${escapeHtml(d.r.variant.sourceModel?.name ?? chartLabel(d.r))}</div><div style="color:${pal.grey};font-size:${11 * t}px">${escapeHtml(lab)}${view.frontier && onFrontier.has(d.r.variant.id) ? " · on the frontier" : ""}</div><div style="font-family:var(--font-jetbrains);margin-top:4px">${d.r.score.toFixed(1)} · ${escapeHtml((formatValue ?? formatX)(d.raw ?? d.x))}${xUnit ? ` ${xUnit}` : ""}${tooltipExtra ? escapeHtml(tooltipExtra(d)) : ""}</div>`;
       },
     },
     series,

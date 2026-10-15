@@ -7,7 +7,7 @@ import type { ChartStyle, PagePreset } from "@/lib/page-presets";
 
 echarts.use([LineChart, ScatterChart, BarChart, GridComponent, TooltipComponent, DatasetComponent, MarkLineComponent, MarkAreaComponent, GraphicComponent, DataZoomComponent, SVGRenderer, LabelLayout, UniversalTransition]);
 
-export const INK = "#1A1A1A", GREY = "#8A8A80", HAIR = "#ECEAE3", BONE = "#FBFBF9", INDIGO = "#2F4FB0";
+export const INK = "#1A1A1A", GREY = "#8A8A80", HAIR = "#ECEAE3", BONE = "#FBFBF9";
 const SANS = "var(--font-inter), Inter, system-ui, sans-serif";
 const MONO = "var(--font-jetbrains), 'JetBrains Mono', Menlo, monospace";
 /** Font stacks without CSS variables — for SSR rasterization, where var() cannot resolve. */
@@ -19,7 +19,12 @@ export interface ChartPalette {
   dark: boolean; ink: string; ink2: string; grey: string; hair: string; bg: string; tipBg: string; tipBorder: string;
   /** Page-theme overrides: chart fonts, per-lab mark colors, and chart treatment (grid, frontier, quadrant, bar labels). */
   fonts?: { sans: string; mono: string }; labColors?: Record<string, string>; style?: ChartStyle;
+  /** Chart scale: text, marks, plot height and ranking row pitch, as multipliers (default 1). */
+  size?: ChartSize;
 }
+export interface ChartSize { text?: number; mark?: number; height?: number; row?: number }
+export const textSize = (pal: ChartPalette) => pal.size?.text ?? 1;
+export const markSize = (pal: ChartPalette) => pal.size?.mark ?? 1;
 export const LIGHT_PALETTE: ChartPalette = { dark: false, ink: INK, ink2: "#595B53", grey: GREY, hair: HAIR, bg: BONE, tipBg: "#FFFFFF", tipBorder: "#DDDBD4" };
 /** Site dark mode: warm near-black page, off-white ink, gridlines just above the background. */
 export const DARK_PALETTE: ChartPalette = { dark: true, ink: "#EDECE6", ink2: "#C2C1B9", grey: "#8C8B83", hair: "#262624", bg: "#141413", tipBg: "#1F1F1C", tipBorder: "#3A3A35" };
@@ -49,14 +54,7 @@ export const DARK_LAB_COLORS: Record<string, string> = {
   "tencent": "#4DADC6",
   "cursor": "#9C9B93",
   "other": "#66655F",
-  "group-0": "#8EA2F2",
-  "group-1": "#EA8A73",
-  "group-2": "#6CC596",
-  "group-3": "#E7B85C",
 };
-
-/** Reporter comparison groups (light colors; dark lifts live in DARK_LAB_COLORS under the same ids). */
-export const GROUP_COLORS = ["#2F4FB0", "#C25A3C", "#3B8A5E", "#B07F1F"];
 
 const chartPalettes = new Map<string, ChartPalette>();
 /** Page preset → chart palette (IndexPage and share cards share this). */
@@ -107,6 +105,13 @@ export function insideLabels(width: () => number | undefined, opts: { moveOverla
   };
 }
 
+/** Open Analysis: value labels inside a light bar (OpenAI's near-white in Analysis dark) switch to dark text. */
+export function insideLabelOn(color: string): { color: string; textBorderWidth: number } | undefined {
+  const m = /^#([0-9a-f]{6})$/i.exec(color); if (!m) return undefined;
+  const n = parseInt(m[1], 16), l = (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255;
+  return l > 0.62 ? { color: "#111111", textBorderWidth: 0 } : undefined;
+}
+
 /** A lab color pushed toward the palette's neutral: how non-highlighted marks recede. */
 export function dimColor(color: string | undefined, pal: ChartPalette, amount = 0.72) {
   const neutral = pal.dark ? "#55554F" : "#C4C3BB", c = color && /^#[0-9a-f]{6}$/i.test(color) ? color : neutral;
@@ -114,16 +119,15 @@ export function dimColor(color: string | undefined, pal: ChartPalette, amount = 
   return "#" + a.map((v, i) => Math.round(v + (b[i] - v) * amount).toString(16).padStart(2, "0")).join("");
 }
 
-export const markLabel = (pal: ChartPalette) => ({ show: true, position: "right" as const, formatter: "{b}", fontSize: 11.5, color: pal.ink, opacity: 1, distance: 7, backgroundColor: pal.bg + "B8", padding: [2, 3], borderRadius: 2, textBorderColor: pal.bg + "D9", textBorderWidth: 2 });
-export const MARK_LABEL = markLabel(LIGHT_PALETTE);
+export const markLabel = (pal: ChartPalette) => ({ show: true, position: "right" as const, formatter: "{b}", fontSize: 11.5, color: pal.ink, opacity: 1, distance: 7, textBorderColor: pal.bg, textBorderWidth: 3 });
 
 const registered = new Set<string>();
 export function themeFor(pal: ChartPalette, fonts?: { sans?: string; mono?: string }) {
   const sans = fonts?.sans ?? pal.fonts?.sans ?? SANS, mono = fonts?.mono ?? pal.fonts?.mono ?? MONO, grid = pal.style?.grid === "dotted" ? "dotted" : "solid";
-  const name = `priors-${[pal.ink, pal.grey, pal.hair, pal.tipBg, sans, mono, grid].join("").replace(/[^a-z0-9]/gi, "")}`;
+  const t = textSize(pal), name = `priors-${[pal.ink, pal.grey, pal.hair, pal.tipBg, sans, mono, grid, t === 1 ? "" : t].join("").replace(/[^a-z0-9]/gi, "")}`;
   if (!registered.has(name)) {
     registered.add(name);
-    const axis = { axisLine: { show: false }, axisTick: { show: false }, axisLabel: { color: pal.grey, fontFamily: mono, fontSize: 11 } };
+    const axis = { axisLine: { show: false }, axisTick: { show: false }, axisLabel: { color: pal.grey, fontFamily: mono, fontSize: 11 * t } };
     echarts.registerTheme(name, {
       backgroundColor: "transparent",
       textStyle: { fontFamily: sans, color: pal.ink },
@@ -131,7 +135,7 @@ export function themeFor(pal: ChartPalette, fonts?: { sans?: string; mono?: stri
       valueAxis: { ...axis, splitLine: { lineStyle: { color: pal.hair, type: grid } } },
       logAxis: { ...axis, splitLine: { lineStyle: { color: pal.hair, type: grid } } },
       timeAxis: { ...axis, splitLine: { lineStyle: { color: pal.hair, type: grid } } },
-      tooltip: { confine: true, backgroundColor: pal.tipBg, borderColor: pal.tipBorder, borderWidth: 1, textStyle: { color: pal.ink, fontSize: 12, fontFamily: sans }, extraCssText: "box-shadow:none;border-radius:4px;padding:8px 10px" },
+      tooltip: { confine: true, backgroundColor: pal.tipBg, borderColor: pal.tipBorder, borderWidth: 1, textStyle: { color: pal.ink, fontSize: 12 * t, fontFamily: sans }, extraCssText: "box-shadow:none;border-radius:4px;padding:8px 10px" },
     });
   }
   return name;

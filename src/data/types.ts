@@ -205,6 +205,9 @@ export interface ScrapeResult {
   raw: Record<string, string>;
   /** Free-form notes for the run log. */
   notes?: string[];
+  /** Benchmarks the publisher has added that this source does not read yet. Logged as NEW_BENCHMARK
+   *  lines; the scheduled job turns each new one into a notification. Never a failure. */
+  discoveries?: string[];
 }
 
 export interface ScrapeContext {

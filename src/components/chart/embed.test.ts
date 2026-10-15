@@ -106,7 +106,7 @@ describe("standalone chart exports", () => {
     const option = calls[0].option as unknown as EmbedOption, data = option.series[0].data!;
     const selected = data.find((item) => item.id === "claude-opus-5.5@high")!, dimmed = data.find((item) => item.id === "other@default")!;
     expect(option.xAxis?.[1].data[0]).toMatchObject({ value: "Claude Opus 5.5", textStyle: { fontWeight: 600 } });
-    expect(option.xAxis?.[1].data[1]).toBe("Other model"); // single-effort bars pack without spacers
+    expect(option.xAxis?.[1].data[1]).toBe("");
     expect(selected.itemStyle?.color).toBe("#EA8A73");
     expect(dimmed.itemStyle).toMatchObject({ color: "#B8B8D0", opacity: 0.6 });
   });

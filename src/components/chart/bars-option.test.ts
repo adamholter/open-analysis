@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ScatterPoint } from "./scatter-option";
-import { barLayout, defaultBarModels, filterBarModels, selectBars } from "./bars-option";
+import { barLayout, defaultBarModels, filterBarModels, barLabelFit, selectBars } from "./bars-option";
 
 const point = (model: string, effort: string, score: number, metric: number): ScatterPoint => ({
   x: metric,
@@ -50,7 +50,7 @@ describe("selectBars highlights", () => {
 
   it("keeps every effort of a highlighted model inside the model cap", () => {
     const selected = selectBars(points, "higher", 2, ["pinned"]);
-    expect(selected.map((p) => p.r.variant.id)).toEqual(["pinned@high", "pinned@low", "top@default"]);
+    expect(selected.map((p) => p.r.variant.id)).toEqual(["top@default", "pinned@low", "pinned@high"]);
   });
 
   it("keeps exact effort highlights even when selections exceed the cap", () => {
@@ -59,11 +59,19 @@ describe("selectBars highlights", () => {
   });
 
   it("keeps the ordinary cap when there are no highlights", () => {
-    expect(selectBars(points, "higher", 2).map((p) => p.r.variant.id)).toEqual(["next@default", "top@default"]);
+    expect(selectBars(points, "higher", 2).map((p) => p.r.variant.id)).toEqual(["top@default", "next@default"]);
   });
 });
 
-it("sorts best first: higher-is-better groups and efforts descend", () => {
+it("sorts model groups by each group's maximum metric and efforts ascending inside each group", () => {
   const points = [point("zeta", "low", 70, 10), point("alpha", "high", 80, 8), point("beta", "default", 90, 5), point("alpha", "low", 60, 3)];
-  expect(selectBars(points, "higher", 10).map((p) => p.r.variant.id)).toEqual(["zeta@low", "alpha@high", "alpha@low", "beta@default"]);
+  expect(selectBars(points, "higher", 10).map((p) => p.r.variant.id)).toEqual(["beta@default", "alpha@low", "alpha@high", "zeta@low"]);
+});
+
+describe("barLabelFit", () => {
+  it("keeps values inside only when every one fits its bar, and turns them vertical past the slot", () => {
+    expect(barLabelFit(["87s", "320s"], 10, 10, 1200, 28)).toBe("inside");
+    expect(barLabelFit(["87.0s", "320s"], 10, 30, 1200, 28)).toBe("above");
+    expect(barLabelFit(["87.0s"], 10, 60, 330, 28)).toBe("vertical");
+  });
 });

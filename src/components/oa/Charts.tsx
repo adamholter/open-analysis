@@ -4,12 +4,13 @@ import type { Lab } from "@/data/types";
 import type { RankedVariant } from "@/engine";
 import type { MetricPoint } from "@/lib/metrics";
 import { MetricBars } from "@/components/chart/MetricBars";
+import { Rankings } from "@/components/Rankings";
 import { ScoreScatter, useScatterView } from "@/components/chart/ScoreScatter";
 import { ParetoChart } from "@/components/chart/ParetoChart";
 import { ChartSettings } from "@/components/chart/ChartSettings";
 
 import { anchorOf } from "@/lib/metrics";
-import { CHARTS, unitFormat } from "@/lib/charts";
+import { CHARTS } from "@/lib/charts";
 
 /** Per model, the highest-index point that has this metric (Priors' pickPoints). */
 function bestPoints(pts: MetricPoint[], lowerIsBetter = false): MetricPoint[] {
@@ -47,14 +48,13 @@ const KindToggle = ({ bars, onChange, label }: { bars: boolean; onChange: (k: "b
   </div>
 );
 
-/** Index ranking as AA-style vertical bars (values inside, lab colors), best effort per model by default. */
-export function IndexBars({ title, desc, best, all, labs, height = 420, limit = 30 }: { title: string; desc?: ReactNode; best: RankedVariant[]; all: RankedVariant[]; labs: Lab[]; height?: number; limit?: number }) {
+/** Index ranking with Priors' leaderboard (columns under the Analysis theme), best effort per model by default. */
+export function IndexBars({ title, desc, best, all, labs, limit = 30 }: { title: string; desc?: ReactNode; best: RankedVariant[]; all: RankedVariant[]; labs: Lab[]; height?: number; limit?: number }) {
   const [mode, setMode] = useState<"all" | "best">("best");
   const [view, setView] = useScatterView(`index-${anchorOf(title)}`, "bars");
-  const pts = useMemo(() => (mode === "best" ? best : all).map((r) => ({ x: r.score, r })), [mode, best, all]);
-  const vis = useAllBars(pts);
-  return <MetricBars pts={vis.points} labs={labs} better="higher" xName={title} formatValue={(x) => x.toFixed(0)} height={height} limit={limit} aria={`${title} by model`}
-    title={<Heading title={title} desc={desc} />} anchor={anchorOf(title)} exportName={title} labelScale={view.labelScale}
+  const rows = mode === "best" ? best : all;
+  const vis = useAllBars(useMemo(() => rows.map((r) => ({ x: r.score, r })), [rows]));
+  return <Rankings ranked={vis.points.map((p) => p.r)} labs={labs} limit={limit} showEffort={mode === "all"} anchor={anchorOf(title)} title={<Heading title={title} desc={desc} />}
     actions={<ChartSettings label={title} anchor={anchorOf(title)} mode={mode} onChange={setMode} view={view} onView={setView} {...vis.picker} />} />;
 }
 
@@ -81,14 +81,13 @@ export function MetricCard({ chart, title, desc, pts: allPts, labs, height = 420
   return <ScoreScatter pts={pts} labs={labs} better={def.better} xName={def.xName} xShort={def.xShort} xUnit={def.xUnit} scale={def.scale} formatX={def.formatX} formatValue={def.formatValue} height={height} aria={def.aria} title={<Heading title={title} desc={desc} />} actions={actions} view={view} anchor={anchor} exportName={title} />;
 }
 
-/** A single benchmark's leaderboard as bars. */
-export function BenchmarkBars({ title, desc, unit, higherIsBetter, pts: allPts, labs, height = 340, limit = 24, anchor }: { title: string; desc?: ReactNode; unit: string; higherIsBetter: boolean; pts: MetricPoint[]; labs: Lab[]; height?: number; limit?: number; anchor?: string }) {
+/** A single benchmark's leaderboard as Analysis columns, best result per model first. */
+export function BenchmarkBars({ title, desc, higherIsBetter, pts: allPts, labs, limit = 24, anchor }: { title: string; desc?: ReactNode; unit: string; higherIsBetter: boolean; pts: MetricPoint[]; labs: Lab[]; height?: number; limit?: number; anchor?: string }) {
   const [mode, setMode] = useState<"all" | "best">("best");
   const [view, setView] = useScatterView(`bench-${anchor ?? anchorOf(title)}`, "bars");
-  const better = higherIsBetter ? "higher" : "lower";
-  const pts = useMemo(() => (mode === "best" ? bestPoints(allPts, !higherIsBetter) : allPts), [mode, allPts, higherIsBetter]);
-  const vis = useAllBars(pts);
-  return <MetricBars pts={vis.points} labs={labs} better={better} xName={title} formatValue={unitFormat(unit)} height={height} limit={limit} aria={`${title} by model`}
-    title={<Heading title={title} desc={desc} />} anchor={anchor ?? anchorOf(title)} exportName={title} labelScale={view.labelScale}
+  const sorted = useMemo(() => (mode === "best" ? bestPoints(allPts, !higherIsBetter) : allPts).slice().sort((a, b) => (higherIsBetter ? b.x - a.x : a.x - b.x)), [mode, allPts, higherIsBetter]);
+  const vis = useAllBars(sorted);
+  const rows = useMemo(() => vis.points.map((p, i) => ({ ...p.r, rank: i + 1 })), [vis.points]);
+  return <Rankings ranked={rows} labs={labs} limit={limit} showEffort={mode === "all"} anchor={anchor ?? anchorOf(title)} title={<Heading title={title} desc={desc} />}
     actions={<ChartSettings label={title} anchor={anchor ?? anchorOf(title)} mode={mode} onChange={setMode} view={view} onView={setView} {...vis.picker} />} />;
 }
