@@ -36,7 +36,7 @@ export default function Methodology() {
           <li><b>Small gaps are estimated.</b> A missing effort is filled from the same model&apos;s other efforts, calibrated on benchmarks where both were measured. Remaining gaps come from peers released around the same time. Estimates never count toward the coverage floor.</li>
           <li><b>Recent models only.</b> The leaderboard covers models released in the last six months.</li>
           <li><b>Cost per task</b> is measured cost to run a task (Artificial Analysis), never token price.</li>
-          <li><b>Speed, latency and output tokens</b> come from Artificial Analysis; providers and uptime from OpenRouter.</li>
+          <li><b>Time per task</b> is the speed measure we lead with: how long a task takes end to end, reasoning included (Artificial Analysis). Output speed (tokens per second) and latency are secondary, since fast tokens can still mean a slow answer. Providers and uptime come from OpenRouter.</li>
           <li><b>Capability indexes</b> average the six best-covered benchmarks in each category, at most two per publisher, with the same rules.</li>
         </ol>
         <h2>Where the data comes from</h2>

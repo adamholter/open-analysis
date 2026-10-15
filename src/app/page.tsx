@@ -18,6 +18,7 @@ const SECTIONS = [
   { id: "leaderboard", label: "All Models" },
 ];
 
+const duration = (v: number) => (v >= 60 ? `${(v / 60).toFixed(v >= 600 ? 0 : 1)} min` : `${v.toFixed(v >= 10 ? 0 : 1)}s`);
 const pct = (s: number) => `${Math.round(s * 100)}%`;
 
 export default function Home() {
@@ -31,6 +32,7 @@ export default function Home() {
   const open = openness();
   const prov = providers();
   const tokens = panel("tokens"), latency = panel("latency"), tpt = panel("tpt"), uptime = panel("uptime"), date = panel("date"), usage = panel("usage");
+  const taskSeconds = new Map((tpt?.points ?? []).map((p) => [p.r.variant.id, p.raw ?? p.x]));
   const labName = new Map(snap.labs.map((l) => [l.id, l.name]));
 
   return (
@@ -58,9 +60,9 @@ export default function Home() {
           <div className="chart-panel">
             <CostChart title="Intelligence vs. Cost per Task" all={index.all} labs={L} desc="Open Index against measured cost per task, log scale. The shaded area is cheaper and smarter than the median." />
           </div>
-          <div className="chart-panel">
-            <MetricCard chart="speed" title="Intelligence vs. Output Speed" desc="Output tokens per second, median across providers" pts={metrics.speed} labs={L} />
-          </div>
+          {tpt && <div className="chart-panel">
+            <MetricCard chart="tpt" title="Intelligence vs. Time per Task" desc={tpt.desc} pts={tpt.points} labs={L} />
+          </div>}
         </section>
 
         <section id="capabilities" className="oa-section">
@@ -97,10 +99,10 @@ export default function Home() {
 
         <section id="speed" className="oa-section">
           <h2>Speed &amp; Latency</h2>
-          <div className="chart-panel"><MetricCard chart="speed" title="Output Speed" desc="Output tokens per second · higher is better" pts={metrics.speed} labs={L} /></div>
+          <p className="lede">How long a task takes is on the leaderboard above (Time per Task). Raw token rates and first-token latency are shown here for reference; a fast token rate does not mean a fast answer once reasoning is counted.</p>
           <div className="oa-grid2">
+            <div className="chart-panel"><MetricCard chart="speed" title="Output Speed" desc="Output tokens per second · higher is better" pts={metrics.speed} labs={L} height={380} /></div>
             {latency && <div className="chart-panel"><MetricCard chart="latency" title="Latency" desc="Seconds to first token · lower is better" pts={latency.points} labs={L} height={380} /></div>}
-            {tpt && <div className="chart-panel"><MetricCard chart="tpt" title="Time per Task" desc={tpt.desc} pts={tpt.points} labs={L} height={380} /></div>}
           </div>
         </section>
 
@@ -125,7 +127,7 @@ export default function Home() {
           <p className="lede">Best reasoning effort per model. Measured is the share of index weight backed by real results; the rest is estimated from close peers.</p>
           <div className="chart-panel oa-scroll">
             <table className="oa-table">
-              <thead><tr><th>#</th><th>Model</th><th className="oa-hide-sm">Lab</th><th className="num">Open Index</th><th className="num oa-hide-sm">Measured</th><th className="num">Cost / task</th><th className="num oa-hide-sm">Tokens/s</th><th className="oa-hide-sm">Released</th></tr></thead>
+              <thead><tr><th>#</th><th>Model</th><th className="oa-hide-sm">Lab</th><th className="num">Open Index</th><th className="num oa-hide-sm">Measured</th><th className="num">Cost / task</th><th className="num">Time / task</th><th className="oa-hide-sm">Released</th></tr></thead>
               <tbody>
                 {index.best.map((r) => (
                   <tr key={r.variant.id}>
@@ -135,7 +137,7 @@ export default function Home() {
                     <td className="num"><b>{r.score.toFixed(1)}</b></td>
                     <td className="num oa-hide-sm">{pct(r.measuredShare)}</td>
                     <td className="num">{r.costUsd != null ? `$${r.costUsd.toFixed(r.costUsd < 1 ? 3 : 2)}` : "–"}</td>
-                    <td className="num oa-hide-sm">{r.speed != null ? Math.round(r.speed) : "–"}</td>
+                    <td className="num">{taskSeconds.get(r.variant.id) != null ? duration(taskSeconds.get(r.variant.id)!) : "–"}</td>
                     <td className="oa-hide-sm">{r.model.releaseDate ?? "–"}</td>
                   </tr>
                 ))}
