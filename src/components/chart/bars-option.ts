@@ -7,6 +7,8 @@ import { featuredPoints, highlightedModels, type ScatterPoint } from "./scatter-
 import { labelScale as normalizeLabelScale } from "./label-size";
 
 const value = (p: ScatterPoint) => p.raw ?? p.x;
+/** Tooltips render as HTML; model names come from scraped and community data. */
+export const escapeHtml = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
 
 export type BarLayoutLabel = { modelId: string; modelName: string; effort: string; label: string };
 const effortLabel = (effort: string) => ({ none: "N", minimal: "Min", low: "L", medium: "M", high: "H", xhigh: "X", max: "Mx", default: "B" }[effort] ?? effort);
@@ -112,7 +114,7 @@ export function barsOption({ bars, labs, xName, formatValue, pal, narrow, highli
       { type: "category", data: layout.modelLabels.map((label, i) => { const p = layout.entries[i]?.point, featuredModel = p && bars.some((bar) => bar.r.model.id === p.r.model.id && featured.has(bar.r.variant.id)); return on && label && p && (hl.has(p.r.model.id) || featuredModel) ? { value: label, textStyle: { color: pal.ink, fontWeight: 600 } } : label; }), position: "bottom", offset: single ? 0 : 32, axisLabel: { rotate, interval: 0, hideOverlap: !rotate, margin: rotate ? 10 : 4, fontSize: 9.5 * fontScale, color: pal.ink, fontWeight: 500, fontFamily: pal.fonts?.sans ?? "var(--font-inter), Inter, sans-serif", width: (rotate ? 120 : 100) * fontScale, overflow: "truncate" }, axisTick: { show: false }, axisLine: { show: false } },
     ],
     yAxis: { type: "value", name: xName, nameTextStyle: { color: pal.grey, fontSize: 11, align: "left", padding: [0, 0, 0, -30] }, axisLabel: { formatter: (v: number) => compact(formatValue)(v) } },
-    tooltip: { trigger: "item", confine: true, formatter: (p: unknown) => { const d = (p as { data?: { point?: ScatterPoint } }).data?.point; return d ? `<div style="font-weight:600">${chartLabel(d.r)}</div><div style="font-family:var(--font-jetbrains);margin-top:4px">${formatValue(value(d))} · index ${d.r.score.toFixed(1)}</div>` : ""; } },
+    tooltip: { trigger: "item", confine: true, formatter: (p: unknown) => { const d = (p as { data?: { point?: ScatterPoint } }).data?.point; return d ? `<div style="font-weight:600">${escapeHtml(chartLabel(d.r))}</div><div style="font-family:var(--font-jetbrains);margin-top:4px">${escapeHtml(formatValue(value(d)))} · index ${d.r.score.toFixed(1)}</div>` : ""; } },
     series: [{
       type: "bar", id: "bars", barMaxWidth: 40, barCategoryGap: single ? "22%" : "20%",
       data: layout.entries.map((entry) => { if (!entry) return { value: null, itemStyle: { color: "transparent" } }; const p = entry.point, c = markColor(color.get(p.r.model.labId), pal, p.r.model.labId), dim = on && !hl.has(p.r.model.id); return { value: value(p), point: p, extra: p, itemStyle: { color: dim ? dimColor(c, pal) : c, opacity: dim ? 0.6 : 1, borderRadius: [pal.style?.barRadius ?? 2, pal.style?.barRadius ?? 2, 0, 0] }, label: dim ? { color: pal.grey } : on && featured.has(p.r.variant.id) ? { fontWeight: 700 } : undefined }; }),

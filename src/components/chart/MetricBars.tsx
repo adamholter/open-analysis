@@ -6,7 +6,7 @@ import type { Lab } from "@/data/types";
 import { DARK_PALETTE, LIGHT_PALETTE, markColor, useChartPalette, useEChart } from "./echarts";
 import { HighlightList, HighlightMenu, togglePoint, useHighlight } from "./highlight";
 import { chartLabel, type ScatterPoint } from "./ScoreScatter";
-import { barsOption, compact, selectBars } from "./bars-option";
+import { barsOption, compact, escapeHtml, selectBars } from "./bars-option";
 import { barsHtml, unitOf } from "./embed";
 import { ChartLink, type ChartLinkParams } from "./ChartLink";
 import { useChartExpand } from "./ChartExpand";
@@ -65,7 +65,7 @@ export function MetricBars({ pts: allPoints, labs, better, xName, formatValue, h
           n: chartLabel(p.r), v: value(p), c, d, dc: dimColor(c, LIGHT_PALETTE), dd: dimColor(d, DARK_PALETTE),
           m: p.r.model.id, mn: p.r.model.name, id: p.r.variant.id, e: p.r.variant.effort,
           h: focusedModels.has(p.r.model.id), a: featured.has(p.r.variant.id),
-          t: `<b>${chartLabel(p.r)}</b><div style="font-family:'JetBrains Mono',monospace;margin-top:4px">${compact(formatValue)(value(p))} · index ${p.r.score.toFixed(1)}</div>`,
+          t: `<b>${escapeHtml(chartLabel(p.r))}</b><div style="font-family:'JetBrains Mono',monospace;margin-top:4px">${escapeHtml(compact(formatValue)(value(p)))} · index ${p.r.score.toFixed(1)}</div>`,
         };
       }),
     });

@@ -212,7 +212,8 @@ export interface ScrapeContext {
   fetchText(url: string, init?: RequestInit): Promise<string>;
   fetchJson<T = unknown>(url: string, init?: RequestInit): Promise<T>;
   /** Render a page in headless Chromium and return the HTML after network idle, or run a callback. */
-  withPage<T>(url: string, fn: (page: import("playwright").Page) => Promise<T>): Promise<T>;
+  // Open Analysis has no scrapers; the page is typed loosely so playwright stays out of the dependency tree.
+  withPage<T>(url: string, fn: (page: unknown) => Promise<T>): Promise<T>;
   now: string;
   log(msg: string): void;
 }
