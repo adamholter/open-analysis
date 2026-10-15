@@ -1,0 +1,35 @@
+model,effort,score,cost_usd,duration_sec,harness
+Gemini 4 Argon,high,44.0,0.2047,178,Antigravity
+Claude Opus 5.5,xhigh,43.0,0.1866,103,Claude Code
+Gemini 4 Argon,medium,43.0,0.0231,33,Antigravity
+Claude Opus 5.5,high,39.0,0.0426,23,Claude Code
+Claude Opus 5.5,medium,35.0,0.0259,13,Claude Code
+Claude Opus 5.5,low,31.0,0.0218,11,Claude Code
+Gemini 4 Argon,low,30.0,0.0074,14,Antigravity
+Gemini 3.8 Flash,high,29.0,0.0617,142,Antigravity
+Gemini 3.8 Flash,medium,27.0,0.0295,68,Antigravity
+GPT-6.1 Sol,xhigh,26.0,0.0147,54,Codex
+GPT-6.1 Sol,high,23.0,0.0077,29,Codex
+GPT-6 Astra,xhigh,22.0,0.0528,42,Codex
+GPT-6 Astra,high,21.0,0.0294,23,Codex
+Claude Sonnet 5.5,xhigh,20.0,0.0129,11,Claude Code
+GPT-6.1 Sol,low,20.0,0.0044,17,Codex
+GPT-6 Astra,medium,17.0,0.0223,16,Codex
+Grok 4.7,high,17.0,0.1072,356,Cursor
+GPT-6.1 Sol,medium,16.0,0.0053,18,Codex
+GPT-6 Astra,low,16.0,0.0212,17,Codex
+Claude Sonnet 5.5,high,15.0,0.01,9,Claude Code
+Grok 4.7,medium,15.0,0.0716,226,Cursor
+Gemini 3.8 Flash,low,15.0,0.0051,20,Antigravity
+Grok 4.7,xhigh,13.0,0.1339,418,Cursor
+Claude Sonnet 5.5,low,11.0,0.0061,6,Claude Code
+Claude Sonnet 5.5,medium,10.0,0.0073,7,Claude Code
+Grok 4.7,low,10.0,0.024,79,Cursor
+Claude Haiku 5.5,medium,9.0,0.0006,7,Claude Code
+GPT-6 Luna,xhigh,9.0,0.0009,25,Codex
+Claude Haiku 5.5,low,7.0,0.0005,7,Claude Code
+Claude Haiku 5.5,high,7.0,0.0008,9,Claude Code
+Claude Haiku 5.5,xhigh,7.0,0.0016,17,Claude Code
+GPT-6 Luna,high,7.0,0.0005,16,Codex
+GPT-6 Luna,low,3.0,0.0001,8,Codex
+GPT-6 Luna,medium,2.0,0.0001,5,Codex

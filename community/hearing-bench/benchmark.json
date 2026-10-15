@@ -1,0 +1,12 @@
+{
+  "id": "hearing-bench",
+  "name": "Hearing Bench",
+  "description": "Models see a spectrogram image of a short sound clip and name the sound, with no tools. 100 clips across five tiers, from everyday sounds to spoken sentences.",
+  "url": "https://hearing-bench.adamholter.chatgpt.site/",
+  "maintainer": "Adam Holter",
+  "category": "reasoning",
+  "unit": "percent",
+  "higherIsBetter": true,
+  "lastUpdated": "2026-10-13",
+  "costNote": "Cost per clip at OpenRouter API list prices, 13 Oct 2026. Runs used each lab's own CLI harness."
+}
