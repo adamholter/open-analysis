@@ -52,7 +52,7 @@ export default function Home() {
         <section id="intelligence" className="oa-section">
           <h2>Intelligence</h2>
           <div className="chart-panel">
-            <IndexBars title={`${OPEN_INDEX.name}`} best={index.best} all={index.all} labs={L}
+            <IndexBars title={`${OPEN_INDEX.name}`} best={index.best} all={index.all} labs={L} more={{ href: "#leaderboard", label: "all models in the table below" }}
               desc={<>Incorporates {index.benchmarks.length} evaluations: {index.benchmarks.map((b, n) => <span key={b.id}>{n ? ", " : ""}<Link href={`/benchmarks/${b.id}`}>{b.name}</Link></span>)} · Higher is better · <Link href="/methodology">Methodology</Link></>} />
           </div>
           <div className="chart-panel">
@@ -125,7 +125,7 @@ export default function Home() {
           <p className="lede">Best reasoning effort per model. Measured is the share of index weight backed by real results; the rest is estimated from close peers.</p>
           <div className="chart-panel oa-scroll">
             <table className="oa-table">
-              <thead><tr><th>#</th><th>Model</th><th>Lab</th><th className="num">Open Index</th><th className="num">Measured</th><th className="num">Cost / task</th><th className="num">Tokens/s</th><th>Released</th></tr></thead>
+              <thead><tr><th>#</th><th>Model</th><th>Lab</th><th className="num">Open Index</th><th className="num oa-hide-sm">Measured</th><th className="num">Cost / task</th><th className="num oa-hide-sm">Tokens/s</th><th className="oa-hide-sm">Released</th></tr></thead>
               <tbody>
                 {index.best.map((r) => (
                   <tr key={r.variant.id}>
@@ -133,10 +133,10 @@ export default function Home() {
                     <td><span className="oa-dot" data-lab={r.model.labId} style={{ background: labColor(r.model.labId) }} /><Link href={`/models/${r.model.id}`}>{r.model.name}</Link>{r.variant.effort !== "default" && <span className="oa-effort">{r.variant.effort}</span>}</td>
                     <td>{labName.get(r.model.labId) ?? r.model.labId}</td>
                     <td className="num"><b>{r.score.toFixed(1)}</b></td>
-                    <td className="num">{pct(r.measuredShare)}</td>
+                    <td className="num oa-hide-sm">{pct(r.measuredShare)}</td>
                     <td className="num">{r.costUsd != null ? `$${r.costUsd.toFixed(r.costUsd < 1 ? 3 : 2)}` : "–"}</td>
-                    <td className="num">{r.speed != null ? Math.round(r.speed) : "–"}</td>
-                    <td>{r.model.releaseDate ?? "–"}</td>
+                    <td className="num oa-hide-sm">{r.speed != null ? Math.round(r.speed) : "–"}</td>
+                    <td className="oa-hide-sm">{r.model.releaseDate ?? "–"}</td>
                   </tr>
                 ))}
               </tbody>

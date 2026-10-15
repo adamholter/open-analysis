@@ -109,17 +109,26 @@ export function barLabelFit(texts: string[], fontSize: number, slots: number, pl
   return widest + 4 <= bar ? "inside" : widest <= slot ? "above" : "vertical";
 }
 
-/** Keep values horizontal and model names legible, even when the viewport needs to scroll. */
-export function barChartMinWidth(slots: number, labels: string[], fontSize: number) {
+/** Axis margins every column chart reserves (px, before label scaling). */
+export const BAR_MARGIN = { left: 64, right: 16 };
+
+/** Narrowest slot one bar may get: its value never touches a neighbour's, and its slanted name stays legible. */
+export function barSlotMin(labels: string[], fontSize: number) {
   const widestValue = Math.max(0, ...labels.map((label) => label.length)) * fontSize * 0.6;
-  return Math.ceil(96 + slots * Math.max(52 * fontSize / 11.5, widestValue + 12));
+  return Math.max(36 * fontSize / 11.5, widestValue + 8);
 }
 
-/** Round added label headroom so the top axis tick never prints a floating-point tail. */
+/** How many bars fit in `width` at that slot size. Charts show this many and never scroll. */
+export function barSlotsThatFit(width: number, slotMin: number, scale = 1) {
+  return Math.max(1, Math.floor((width - (BAR_MARGIN.left + BAR_MARGIN.right) * scale) / slotMin));
+}
+
+/** Top of a bar axis: the data max plus label headroom, rounded up to a whole tick (1, 2, 5 × 10ⁿ) so no stray "740" sits beside "700". */
 export function barAxisMax(max: number, headroom = 0.08) {
   if (max <= 0) return 1;
-  const step = 10 ** Math.floor(Math.log10(max) - 1);
-  return Number((Math.ceil(max * (1 + headroom) / step) * step).toPrecision(12));
+  const target = max * (1 + headroom), raw = target / 5, mag = 10 ** Math.floor(Math.log10(raw)), f = raw / mag;
+  const step = (f < 1.5 ? 1 : f < 3.5 ? 2 : f < 7.5 ? 5 : 10) * mag;
+  return Number((Math.ceil(target / step) * step).toPrecision(12));
 }
 
 export function barsOption({ bars, labs, xName, formatValue, pal, highlight, labelScale, width, height = 400 }: {
@@ -140,7 +149,7 @@ export function barsOption({ bars, labs, xName, formatValue, pal, highlight, lab
   // Dimmed bars are too pale for white text, so their values sit above in grey.
   const above = { position: "top" as const, distance: 5, rotate: 0, align: "center" as const, verticalAlign: "bottom" as const, color: pal.ink, textBorderWidth: 0, opacity: 1 };
   return {
-    grid: { left: 64 * t, right: 16, top: 52, bottom: (grouped ? 124 : 104) * fontScale, ...CONTAIN_AXIS_LABELS },
+    grid: { left: BAR_MARGIN.left * t, right: BAR_MARGIN.right, top: 52, bottom: (grouped ? 124 : 104) * fontScale, ...CONTAIN_AXIS_LABELS },
     xAxis: [
       { type: "category", data: layout.effortLabels.map((label, i) => on && layout.entries[i] && featured.has(layout.entries[i]!.point.r.variant.id) ? { value: label, textStyle: { color: pal.ink, fontWeight: 600 } } : label), axisLabel: { show: grouped, rotate: 0, interval: 0, hideOverlap: false, fontSize: 11 * fontScale, color: pal.ink2, fontFamily: pal.fonts?.sans ?? "var(--font-inter), Inter, sans-serif", width: 44 * fontScale, overflow: "truncate" }, axisTick: { show: false }, axisLine: { show: false } },
       { type: "category", data: layout.modelLabels.map((label, i) => { const p = layout.entries[i]?.point, featuredModel = p && bars.some((bar) => bar.r.model.id === p.r.model.id && featured.has(bar.r.variant.id)); return on && label && p && (hl.has(p.r.model.id) || featuredModel) ? { value: label, textStyle: { color: pal.ink, fontWeight: 600 } } : label; }), position: "bottom", offset: grouped ? 24 * fontScale : 0, axisLabel: { rotate: 45, interval: 0, hideOverlap: false, margin: 10, fontSize: 12 * fontScale, color: pal.ink2, fontFamily: pal.fonts?.sans ?? "var(--font-inter), Inter, sans-serif", width: 160 * fontScale, overflow: "truncate" }, axisTick: { show: false }, axisLine: { show: false } },

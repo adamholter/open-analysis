@@ -48,8 +48,8 @@ export default async function ModelPage({ params }: { params: Promise<{ id: stri
             <h2>By Reasoning Effort</h2>
             <div className="chart-panel oa-scroll">
               <table className="oa-table">
-                <thead><tr><th>Effort</th><th className="num">Open Index</th><th className="num">Measured</th><th className="num">Cost / task</th></tr></thead>
-                <tbody>{efforts.map((r) => <tr key={r.variant.id}><td>{r.variant.effort}</td><td className="num">{r.score.toFixed(1)}</td><td className="num">{Math.round(r.measuredShare * 100)}%</td><td className="num">{usd(r.costUsd)}</td></tr>)}</tbody>
+                <thead><tr><th>Effort</th><th className="num">Open Index</th><th className="num">Measured</th><th className="num oa-hide-sm">Cost / task</th></tr></thead>
+                <tbody>{efforts.map((r) => <tr key={r.variant.id}><td>{r.variant.effort}</td><td className="num">{r.score.toFixed(1)}</td><td className="num">{Math.round(r.measuredShare * 100)}%</td><td className="num oa-hide-sm">{usd(r.costUsd)}</td></tr>)}</tbody>
               </table>
             </div>
           </section>
@@ -59,7 +59,7 @@ export default async function ModelPage({ params }: { params: Promise<{ id: stri
           <p className="lede">{results.length} measured results, as published.</p>
           <div className="chart-panel oa-scroll">
             <table className="oa-table">
-              <thead><tr><th>Benchmark</th><th>Category</th><th>Effort</th><th className="num">Score</th><th className="num">Cost / task</th><th>Source</th></tr></thead>
+              <thead><tr><th>Benchmark</th><th>Category</th><th>Effort</th><th className="num">Score</th><th className="num oa-hide-sm">Cost / task</th><th>Source</th></tr></thead>
               <tbody>
                 {results.map((r, i) => (
                   <tr key={i}>
@@ -67,7 +67,7 @@ export default async function ModelPage({ params }: { params: Promise<{ id: stri
                     <td>{categoryLabel(r.benchmark.category)}</td>
                     <td>{r.effort === "default" ? "–" : r.effort}</td>
                     <td className="num">{r.benchmark.unit === "percent" ? `${r.value.toFixed(1)}%` : r.value.toLocaleString(undefined, { maximumFractionDigits: 2 })}</td>
-                    <td className="num">{usd(r.costUsd)}</td>
+                    <td className="num oa-hide-sm">{usd(r.costUsd)}</td>
                     <td><a href={r.sourceUrl} rel="noreferrer">{publisherOf(r.benchmark)}</a></td>
                   </tr>
                 ))}

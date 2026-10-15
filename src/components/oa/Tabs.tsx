@@ -42,7 +42,7 @@ function BenchmarkCard({ c, models, labs }: { c: BenchmarkChart; models: ChartMo
   const pts = useMemo(() => decode(models, c.points), [models, c.points]);
   return (
     <div className="chart-panel oa-small">
-      <BenchmarkBars anchor={`b-${c.id}`} title={c.name} unit={c.unit} higherIsBetter={c.higherIsBetter} pts={pts} labs={labs} height={300} limit={20}
+      <BenchmarkBars anchor={`b-${c.id}`} title={c.name} unit={c.unit} higherIsBetter={c.higherIsBetter} pts={pts} labs={labs} height={300} limit={20} more={{ href: `/benchmarks/${c.id}`, label: `all ${c.models} results` }}
         desc={<><Link href={`/benchmarks/${c.id}`}>{c.publisher}</Link>{c.community && <span className="oa-badge">community</span>} · {categoryLabel(c.category)} · {c.models} recent models{c.updated ? ` · updated ${c.updated}` : ""}</>} />
     </div>
   );

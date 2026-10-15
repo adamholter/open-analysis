@@ -11,7 +11,7 @@ function Table({ list, inIndex }: { list: { b: Benchmark; n: number }[]; inIndex
   return (
     <div className="chart-panel oa-scroll">
       <table className="oa-table">
-        <thead><tr><th>Benchmark</th><th>Category</th><th>Publisher</th><th className="num">Models</th><th>Updated</th></tr></thead>
+        <thead><tr><th>Benchmark</th><th>Category</th><th>Publisher</th><th className="num">Models</th><th className="oa-hide-sm">Updated</th></tr></thead>
         <tbody>
           {list.map(({ b, n }) => (
             <tr key={b.id}>
@@ -19,7 +19,7 @@ function Table({ list, inIndex }: { list: { b: Benchmark; n: number }[]; inIndex
               <td>{categoryLabel(b.category)}</td>
               <td>{publisherOf(b)}</td>
               <td className="num">{n}</td>
-              <td>{b.lastUpdated ?? "–"}</td>
+              <td className="oa-hide-sm">{b.lastUpdated ?? "–"}</td>
             </tr>
           ))}
         </tbody>

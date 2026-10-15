@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ScatterPoint } from "./scatter-option";
-import { barChartMinWidth, barLayout, defaultBarModels, filterBarModels, barLabelFit, selectBars } from "./bars-option";
+import { barLayout, barSlotMin, barSlotsThatFit, defaultBarModels, filterBarModels, barLabelFit, selectBars } from "./bars-option";
 
 const point = (model: string, effort: string, score: number, metric: number): ScatterPoint => ({
   x: metric,
@@ -47,11 +47,16 @@ it("does not insert empty bars between single-model categories", () => {
   expect(layout.effortLabels).toEqual(["", "", ""]);
 });
 
-it("gives expanded and mobile charts enough width for horizontal values", () => {
+it("fits only as many bars as keep horizontal values apart, never scrolling", () => {
   for (const labels of [["100.0%"], ["$0.0010", "$15.2"], ["1,561", "69.4"]]) {
-    const width = barChartMinWidth(80, labels, 11.5);
-    expect(barLabelFit(labels, 11.5, 80, width - 80, 64)).not.toBe("vertical");
+    const slot = barSlotMin(labels, 11.5), widest = Math.max(...labels.map((l) => l.length)) * 11.5 * 0.6;
+    expect(slot).toBeGreaterThanOrEqual(widest + 8);
+    const slots = barSlotsThatFit(1066, slot);
+    expect(slots).toBeGreaterThan(8);
+    expect(barLabelFit(labels, 11.5, slots, 1066 - 80, 64)).not.toBe("vertical");
   }
+  expect(barSlotsThatFit(40, 36)).toBe(1);
+  expect(barSlotsThatFit(330, barSlotMin(["69.0"], 11.5))).toBeLessThan(barSlotsThatFit(1066, barSlotMin(["69.0"], 11.5)));
 });
 
 describe("selectBars highlights", () => {

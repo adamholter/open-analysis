@@ -42,12 +42,12 @@ export default async function BenchmarkPage({ params }: { params: Promise<{ id: 
         </section>
         <section className="oa-section">
           <div className="chart-panel">
-            <BenchmarkBars title={b.name} unit={b.unit} higherIsBetter={b.higherIsBetter} pts={benchmarkPoints(id)} labs={labs()} height={440} limit={30}
+            <BenchmarkBars title={b.name} unit={b.unit} higherIsBetter={b.higherIsBetter} pts={benchmarkPoints(id)} labs={labs()} height={440} limit={30} more="full table below"
               desc={`${b.higherIsBetter ? "Higher" : "Lower"} is better · best effort per model${b.costNote ? ` · ${b.costNote}` : ""}`} />
           </div>
           <div className="chart-panel oa-scroll">
             <table className="oa-table">
-              <thead><tr><th>#</th><th>Model</th><th>Effort</th><th className="num">Score</th><th className="num">Cost / task</th><th>Harness</th></tr></thead>
+              <thead><tr><th>#</th><th>Model</th><th>Effort</th><th className="num">Score</th><th className="num oa-hide-sm">Cost / task</th><th className="oa-hide-sm">Harness</th></tr></thead>
               <tbody>
                 {rows.map((r, i) => (
                   <tr key={r.modelId}>
@@ -55,8 +55,8 @@ export default async function BenchmarkPage({ params }: { params: Promise<{ id: 
                     <td><span className="oa-dot" data-lab={r.labId} style={{ background: labColor(r.labId) }} /><Link href={`/models/${r.modelId}`}>{r.name}</Link></td>
                     <td>{r.effort === "default" ? "–" : r.effort}</td>
                     <td className="num"><a href={r.sourceUrl} rel="noreferrer">{r.value.toFixed(digits)}{UNIT[b.unit]}</a></td>
-                    <td className="num">{usd(r.costUsd)}</td>
-                    <td>{r.harness ?? "–"}</td>
+                    <td className="num oa-hide-sm">{usd(r.costUsd)}</td>
+                    <td className="oa-hide-sm">{r.harness ?? "–"}</td>
                   </tr>
                 ))}
               </tbody>

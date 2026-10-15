@@ -360,13 +360,7 @@ html[data-theme="dark"] body { background: #0A0A0A; }
 .oa-table a { text-decoration: none; }
 .oa-table a:hover { text-decoration: underline; }
 .oa-scroll { overflow-x: auto; }
-.bar-chart-frame { min-width: 0; display: flex; flex-direction: column; }
-.bar-chart-scroll { flex: 1; min-height: 0; max-width: 100%; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin; scrollbar-color: var(--grey) var(--hair-2); }
-.bar-chart-scroll:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
-.bar-chart-nav { display: flex; justify-content: flex-end; gap: 4px; padding-top: 4px; }
-.bar-chart-nav button { display: grid; place-items: center; width: 28px; height: 26px; border: 1px solid var(--hair); border-radius: 4px; color: var(--ink); background: var(--white); }
-.bar-chart-nav button:disabled { opacity: .3; cursor: default; }
-.bar-chart-nav button:not(:disabled):hover { background: var(--hair-2); }
+@media (max-width: 640px) { .oa-hide-sm { display: none; } }
 /* Lab dots are server-rendered in light AA colors; dark mode swaps the near-black ones (aa-dark labColors). */
 html[data-theme="dark"] .oa-dot[data-lab="openai"] { background: #E6E6E6 !important; }
 html[data-theme="dark"] .oa-dot[data-lab="inception"] { background: #7A94B8 !important; }

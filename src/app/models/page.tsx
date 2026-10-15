@@ -22,7 +22,7 @@ export default function Models() {
           <p className="lede">{models.length} models with at least one result. Use the id column when you submit community results.</p>
           <div className="chart-panel oa-scroll">
             <table className="oa-table">
-              <thead><tr><th>Model</th><th>Id</th><th>Lab</th><th className="num">Open Index rank</th><th className="num">Results</th><th>Released</th></tr></thead>
+              <thead><tr><th>Model</th><th>Id</th><th>Lab</th><th className="num">Open Index rank</th><th className="num oa-hide-sm">Results</th><th className="oa-hide-sm">Released</th></tr></thead>
               <tbody>
                 {models.map((m) => (
                   <tr key={m.id}>
@@ -30,8 +30,8 @@ export default function Models() {
                     <td><code>{m.id}</code></td>
                     <td>{labs.get(m.labId) ?? m.labId}</td>
                     <td className="num">{ranked.get(m.id)?.rank ?? "–"}</td>
-                    <td className="num">{count.get(m.id)}</td>
-                    <td>{m.releaseDate ?? "–"}</td>
+                    <td className="num oa-hide-sm">{count.get(m.id)}</td>
+                    <td className="oa-hide-sm">{m.releaseDate ?? "–"}</td>
                   </tr>
                 ))}
               </tbody>
