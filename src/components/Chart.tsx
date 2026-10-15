@@ -22,6 +22,9 @@ function useDark() {
   return dark;
 }
 
+/** Tooltips render as HTML; model names come from scraped and community data. */
+const esc = (v: string) => v.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+
 const FONT = "Switzer, 'Helvetica Neue', Arial, sans-serif";
 const palette = (dark: boolean) => ({ ink: dark ? "#fafafa" : "#000", grey: dark ? "#a1a1aa" : "#71717a", hair: dark ? "#27272a" : "#e4e4e7", bg: dark ? "#141414" : "#fff", accent: dark ? "#a78bfa" : "#7f4bf3" });
 // Near-black/near-white labs (OpenAI) flip in dark mode so marks stay visible.
@@ -51,7 +54,7 @@ export function Bars({ points, unit = "", digits = 0, height = 360, lowerIsBette
       animation: false,
       textStyle: { fontFamily: FONT },
       grid: { left: 8, right: 8, top: 28, bottom: 8, containLabel: true },
-      tooltip: { trigger: "item", formatter: (x: { dataIndex: number }) => `${points[x.dataIndex].label}<br/><b>${fmt(points[x.dataIndex].y)}</b>${lowerIsBetter ? " (lower is better)" : ""}` },
+      tooltip: { trigger: "item", formatter: (x: { dataIndex: number }) => `${esc(points[x.dataIndex].label)}<br/><b>${esc(fmt(points[x.dataIndex].y))}</b>${lowerIsBetter ? " (lower is better)" : ""}` },
       xAxis: { type: "category", data: points.map((d) => d.name), axisTick: { show: false }, axisLine: { lineStyle: { color: p.hair } },
         axisLabel: { color: p.ink, fontSize: 11, rotate: points.length > 12 ? 45 : 0, interval: 0, width: 90, overflow: "truncate" } },
       yAxis: { type: "value", splitLine: { lineStyle: { color: p.hair, type: [2, 3] } }, axisLabel: { color: p.grey, fontSize: 11 } },
@@ -73,7 +76,7 @@ export function Scatter({ points, xName, yName, logX = false, xUnit = "", higher
       animation: false,
       textStyle: { fontFamily: FONT },
       grid: { left: 36, right: 96, top: 16, bottom: 40, containLabel: true },
-      tooltip: { trigger: "item", formatter: (x: { dataIndex: number }) => { const d = points[x.dataIndex]; return `${d.label}<br/>${yName}: <b>${d.y.toFixed(1)}</b><br/>${xName}: <b>${fx(d.x!)}</b>`; } },
+      tooltip: { trigger: "item", formatter: (x: { dataIndex: number }) => { const d = points[x.dataIndex]; return `${esc(d.label)}<br/>${esc(yName)}: <b>${d.y.toFixed(1)}</b><br/>${esc(xName)}: <b>${esc(fx(d.x!))}</b>`; } },
       xAxis: { type: logX ? "log" : "value", name: xName, nameLocation: "middle", nameGap: 28, nameTextStyle: { color: p.grey, fontSize: 12 },
         splitLine: { lineStyle: { color: p.hair, type: [2, 3] } }, axisLine: { lineStyle: { color: p.hair } }, axisLabel: { color: p.grey, fontSize: 11, formatter: fx }, scale: true },
       yAxis: { type: "value", name: yName, nameLocation: "middle", nameGap: 32, nameTextStyle: { color: p.grey, fontSize: 12 }, scale: true,
