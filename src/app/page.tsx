@@ -2,8 +2,10 @@ import Link from "next/link";
 import { CostChart, IndexBars, MetricCard } from "@/components/oa/Charts";
 import { BenchmarkGrid, CapabilityTabs } from "@/components/oa/Tabs";
 import { SideNav } from "@/components/oa/SideNav";
-import { OPEN_INDEX, labColor, snapshot } from "@/lib/data";
-import { benchmarkCharts, capabilityIndexes, labs, metricViews, openIndexView, openness, providers } from "@/lib/views";
+import { Leaderboard } from "@/components/oa/Leaderboard";
+import { FilterBar, FiltersProvider } from "@/components/oa/Filters";
+import { OPEN_INDEX, snapshot } from "@/lib/data";
+import { benchmarkCharts, capabilityIndexes, labs, metricViews, openIndexView, openness, pickerData, providers } from "@/lib/views";
 
 const SECTIONS = [
   { id: "intelligence", label: "Intelligence" },
@@ -18,9 +20,6 @@ const SECTIONS = [
   { id: "leaderboard", label: "All Models" },
 ];
 
-const duration = (v: number) => (v >= 60 ? `${(v / 60).toFixed(v >= 600 ? 0 : 1)} min` : `${v.toFixed(v >= 10 ? 0 : 1)}s`);
-const pct = (s: number) => `${Math.round(s * 100)}%`;
-
 export default function Home() {
   const snap = snapshot();
   const L = labs();
@@ -32,10 +31,11 @@ export default function Home() {
   const open = openness();
   const prov = providers();
   const tokens = panel("tokens"), latency = panel("latency"), tpt = panel("tpt"), uptime = panel("uptime"), date = panel("date"), usage = panel("usage");
-  const taskSeconds = new Map((tpt?.points ?? []).map((p) => [p.r.variant.id, p.raw ?? p.x]));
-  const labName = new Map(snap.labs.map((l) => [l.id, l.name]));
+  const taskSeconds = Object.fromEntries((tpt?.points ?? []).map((p) => [p.r.variant.id, p.raw ?? p.x]));
+  const picker = pickerData();
 
   return (
+    <FiltersProvider asOf={picker.asOf} models={picker.models} efforts={picker.efforts} dates={picker.dates}>
     <div className="oa-body">
       <SideNav items={SECTIONS} />
       <main className="oa-main">
@@ -49,12 +49,13 @@ export default function Home() {
             <div><b>{community.length}</b><span>community benchmarks</span></div>
             <div><b>{snap.observations.length.toLocaleString()}</b><span>results</span></div>
           </div>
+          <FilterBar labs={L} />
         </section>
 
         <section id="intelligence" className="oa-section">
           <h2>Intelligence</h2>
           <div className="chart-panel">
-            <IndexBars title={`${OPEN_INDEX.name}`} best={index.best} all={index.all} labs={L} more={{ href: "#leaderboard", label: "all models in the table below" }}
+            <IndexBars title={`${OPEN_INDEX.name}`} all={index.all} labs={L} more={{ href: "#leaderboard", label: "all models in the table below" }}
               desc={<>Incorporates {index.benchmarks.length} evaluations: {index.benchmarks.map((b, n) => <span key={b.id}>{n ? ", " : ""}<Link href={`/benchmarks/${b.id}`}>{b.name}</Link></span>)} · Higher is better · <Link href="/methodology">Methodology</Link></>} />
           </div>
           <div className="chart-panel">
@@ -73,7 +74,7 @@ export default function Home() {
 
         <section id="benchmarks" className="oa-section">
           <h2>Benchmarks</h2>
-          <p className="lede">Every benchmark with results for at least eight models released in the last six months, including {community.length} from the community. Best effort per model. <Link href="/contribute" className="underline">Add yours</Link>.</p>
+          <p className="lede">Every benchmark with results for at least eight models released in the last year, including {community.length} from the community. Follows the filters above. <Link href="/contribute" className="underline">Add yours</Link>.</p>
           <BenchmarkGrid charts={charts} models={chartModels} labs={L} initial={12} />
         </section>
 
@@ -81,7 +82,7 @@ export default function Home() {
           <h2>Open Weights</h2>
           <p className="lede">{open.open.length} of the {open.open.length + open.closed.length} ranked models with known licensing publish their weights. The best open model scores {open.open[0] ? `${open.open[0].score.toFixed(0)} (${open.open[0].model.name})` : "–"} against {open.closed[0] ? `${open.closed[0].score.toFixed(0)} (${open.closed[0].model.name})` : "–"} for the best proprietary one.</p>
           <div className="chart-panel">
-            <IndexBars title="Open Index: open-weights models" best={open.open} all={open.open} labs={L} height={380} desc="Open weights per Artificial Analysis model metadata · best effort per model" />
+            <IndexBars title="Open Index: open-weights models" all={open.openAll} labs={L} height={380} desc="Open weights per Artificial Analysis model metadata · best effort per model" />
           </div>
         </section>
 
@@ -124,28 +125,11 @@ export default function Home() {
 
         <section id="leaderboard" className="oa-section">
           <h2>All Models</h2>
-          <p className="lede">Best reasoning effort per model. Measured is the share of index weight backed by real results; the rest is estimated from close peers.</p>
-          <div className="chart-panel oa-scroll">
-            <table className="oa-table">
-              <thead><tr><th>#</th><th>Model</th><th className="oa-hide-sm">Lab</th><th className="num">Open Index</th><th className="num oa-hide-sm">Measured</th><th className="num">Cost / task</th><th className="num">Time / task</th><th className="oa-hide-sm">Released</th></tr></thead>
-              <tbody>
-                {index.best.map((r) => (
-                  <tr key={r.variant.id}>
-                    <td>{r.rank}</td>
-                    <td><span className="oa-dot" data-lab={r.model.labId} style={{ background: labColor(r.model.labId) }} /><Link href={`/models/${r.model.id}`}>{r.model.name}</Link>{r.variant.effort !== "default" && <span className="oa-effort">{r.variant.effort}</span>}</td>
-                    <td className="oa-hide-sm">{labName.get(r.model.labId) ?? r.model.labId}</td>
-                    <td className="num"><b>{r.score.toFixed(1)}</b></td>
-                    <td className="num oa-hide-sm">{pct(r.measuredShare)}</td>
-                    <td className="num">{r.costUsd != null ? `$${r.costUsd.toFixed(r.costUsd < 1 ? 3 : 2)}` : "–"}</td>
-                    <td className="num">{taskSeconds.get(r.variant.id) != null ? duration(taskSeconds.get(r.variant.id)!) : "–"}</td>
-                    <td className="oa-hide-sm">{r.model.releaseDate ?? "–"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <p className="lede">Best reasoning effort per model, for the models and window picked above. Measured is the share of index weight backed by real results; the rest is estimated from close peers.</p>
+          <Leaderboard all={index.all} labs={L} seconds={taskSeconds} />
         </section>
       </main>
     </div>
+    </FiltersProvider>
   );
 }

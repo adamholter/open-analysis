@@ -50,7 +50,7 @@ export default async function ModelPage({ params }: { params: Promise<{ id: stri
             <p className="cap">{index.name}</p>
             {ranked
               ? <><p className="num text-[52px] leading-none mt-1" style={{ color: "var(--indigo)" }}>{ranked.score.toFixed(1)}</p><p className="text-[13px] mt-1" style={{ color: "var(--ink-2)" }}>#{ranked.rank} of {index.best.length} models{ranked.variant.effort !== "default" ? ` · best at ${ranked.variant.effort}` : ""}</p></>
-              : <p className="text-[13px] mt-2 max-w-[30ch]" style={{ color: "var(--ink-2)" }}>Not ranked on the Open Index: too little measured data on its benchmarks, or released more than six months ago.</p>}
+              : <p className="text-[13px] mt-2 max-w-[30ch]" style={{ color: "var(--ink-2)" }}>Not ranked on the Open Index: too little measured data on its benchmarks, or released more than a year ago.</p>}
           </div>
         </section>
         {fact.length > 0 && <dl className="oa-facts">{fact.map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}</dl>}

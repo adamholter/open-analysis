@@ -11,7 +11,9 @@ import { chartLinkUrl } from "@/lib/highlight-link";
 import { FormulaEditor, type FormulaSettings } from "./formula-chart";
 import styles from "./ChartSettings.module.css";
 
-export function ChartSettings({ label, mode, onChange, releasedAfter, onChangeReleased, models = [], excluded, onToggleModel, onShowAllModels, onHideAllModels, view, onView, dataSource, costBasis, defaultScale, anchor, formula }: {
+export function ChartSettings({ label, mode, onChange, releasedAfter, onChangeReleased, models = [], excluded, onToggleModel, onShowAllModels, onHideAllModels, view, onView, dataSource, costBasis, defaultScale, anchor, formula, releaseWindow }: {
+  /** Open Analysis: release window in whole months (the page-wide filter), instead of Priors' dated cutoff. */
+  releaseWindow?: { months: number; options: readonly number[]; onChange: (months: number) => void };
   /** Advanced: a custom formula for this chart's metric. Omitted where a chart has no formula support. */
   formula?: FormulaSettings;
   /** Cost charts: price tasks at API list prices or at each lab's subscription plan. */
@@ -74,8 +76,9 @@ export function ChartSettings({ label, mode, onChange, releasedAfter, onChangeRe
     })}{!filtered.length && <p>No matching models.</p>}</div>
   </>;
   const settingsPanel = <>
-    {(dataSource || onChangeReleased) && <div className={styles.dataControls}>
+    {(dataSource || onChangeReleased || releaseWindow) && <div className={styles.dataControls}>
       {dataSource && <div className={styles.dataField}><label htmlFor={`${id}-source`}>Data source</label><select aria-label={`${label} data source`} id={`${id}-source`} value={dataSource.value} onChange={e => dataSource.onChange(e.target.value as TaskMetricSource)}>{dataSource.options.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></div>}
+      {releaseWindow && <div className={styles.dataField}><label htmlFor={`${id}-release`}>Released</label><select aria-label={`${label} release window`} id={`${id}-release`} value={releaseWindow.months} onChange={e => releaseWindow.onChange(+e.target.value)}>{releaseWindow.options.map(m => <option key={m} value={m}>{m === 12 ? "Last year" : `Last ${m} months`}</option>)}</select></div>}
       {onChangeReleased && <div className={styles.dataField}><label htmlFor={`${id}-release`}>Released</label><select aria-label={`${label} release window`} id={`${id}-release`} value={releaseValue} onChange={e => onChangeReleased?.(e.target.value === "all" ? "" : releaseDate(+e.target.value))}><option value="6">Last 6 months</option><option value="12">Last year</option><option value="24">Last 2 years</option><option value="all">All time</option>{releaseValue === "custom" && <option value="custom" disabled>Custom</option>}</select></div>}
     </div>}
     {costBasis && <div className={styles.row}><span id={`${id}-basis-label`}>Pricing</span><div className={styles.choice} role="group" aria-labelledby={`${id}-basis-label`}>{COST_BASES.map(b => <button key={b.id} type="button" aria-pressed={costBasis.value === b.id} onClick={() => costBasis.onChange(b.id)}>{b.name}</button>)}</div></div>}

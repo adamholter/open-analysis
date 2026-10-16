@@ -21,7 +21,7 @@ export function CapabilityTabs({ indexes, labs }: { indexes: IndexView[]; labs: 
         {indexes.map((i) => <button key={i.id} type="button" role="tab" aria-selected={i.id === idx.id} onClick={() => setActive(i.id)}>{i.name.replace(/ Index$/, "")}</button>)}
       </div>
       <div className="chart-panel">
-        <IndexBars key={idx.id} title={`Open ${idx.name}`} best={idx.best} all={idx.all} labs={labs} height={400}
+        <IndexBars key={idx.id} title={`Open ${idx.name}`} all={idx.all} labs={labs} height={400}
           desc={<>Incorporates {idx.benchmarks.length} evaluations: {idx.benchmarks.map((b, n) => <span key={b.id}>{n ? ", " : ""}<Link href={`/benchmarks/${b.id}`}>{b.name}</Link> ({pct(b.share)})</span>)} · Higher is better</>} />
       </div>
     </div>

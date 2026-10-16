@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useState, type ReactNode } from "react";
+import { useCallback, useMemo, useState, type ReactNode } from "react";
 import type { Lab } from "@/data/types";
 import type { RankedVariant } from "@/engine";
 import type { MetricPoint } from "@/lib/metrics";
@@ -13,6 +13,7 @@ import { ChartSettings } from "@/components/chart/ChartSettings";
 
 import { anchorOf } from "@/lib/metrics";
 import { CHARTS } from "@/lib/charts";
+import { WINDOWS, useOptionalFilters, type Priced } from "./Filters";
 
 /** Per model, the highest-index point that has this metric (Priors' pickPoints). */
 function bestPoints(pts: MetricPoint[], lowerIsBetter = false): MetricPoint[] {
@@ -47,6 +48,21 @@ function useAllBars(pts: MetricPoint[]) {
   return { points, picker };
 }
 
+/** Page-wide filter settings every chart shows in its menu (absent outside the home page's FiltersProvider). */
+function useScope() {
+  const f = useOptionalFilters();
+  const release = useMemo(() => (f ? { releaseWindow: { months: f.months, options: WINDOWS, onChange: (months: number) => f.set({ months: months as (typeof WINDOWS)[number] }) } } : {}), [f]);
+  const points = useCallback(<T extends MetricPoint>(p: T[]): T[] => (f ? f.points(p) : p), [f]);
+  const ranked = useCallback((rows: Priced[], mode: "all" | "best"): RankedVariant[] => {
+    if (f) return f.ranked(rows, mode);
+    if (mode === "all") return rows;
+    const best = new Map<string, RankedVariant>();
+    for (const r of rows) { const cur = best.get(r.model.id); if (!cur || r.score > cur.score) best.set(r.model.id, r); }
+    return [...best.values()].sort((a, b) => b.score - a.score).map((r, i) => ({ ...r, rank: i + 1 }));
+  }, [f]);
+  return { f, release, points, ranked };
+}
+
 function Heading({ title, desc }: { title: string; desc?: ReactNode }) {
   return <div><h2 className="text-[22px]">{title}</h2>{desc && <p className="cap mt-1">{desc}</p>}</div>;
 }
@@ -59,21 +75,25 @@ const KindToggle = ({ bars, onChange, label }: { bars: boolean; onChange: (k: "b
 );
 
 /** Index ranking with Priors' leaderboard (columns under the Analysis theme), best effort per model by default. */
-export function IndexBars({ title, desc, best, all, labs, limit = 30, more }: { title: string; desc?: ReactNode; best: RankedVariant[]; all: RankedVariant[]; labs: Lab[]; height?: number; limit?: number; more?: string | { href: string; label: string } }) {
+export function IndexBars({ title, desc, all, labs, limit = 30, more }: { title: string; desc?: ReactNode; best?: RankedVariant[]; all: Priced[]; labs: Lab[]; height?: number; limit?: number; more?: string | { href: string; label: string } }) {
   const [mode, setMode] = useState<"all" | "best">("best");
   const [view, setView] = useScatterView(`index-${anchorOf(title)}`, "bars");
-  const rows = mode === "best" ? best : all;
+  const { release, ranked } = useScope();
+  const rows = useMemo(() => ranked(all, mode), [ranked, all, mode]);
   const vis = useAllBars(useMemo(() => rows.map((r) => ({ x: r.score, r })), [rows]));
   return <Rankings ranked={vis.points.map((p) => p.r)} labs={labs} limit={limit} more={more} showEffort={mode === "all"} anchor={anchorOf(title)} title={<Heading title={title} desc={desc} />}
-    actions={<ChartSettings label={title} anchor={anchorOf(title)} mode={mode} onChange={setMode} view={view} onView={setView} {...vis.picker} />} />;
+    actions={<ChartSettings label={title} anchor={anchorOf(title)} mode={mode} onChange={setMode} view={view} onView={setView} {...release} {...vis.picker} />} />;
 }
 
 /** Index vs cost per task: Priors' Pareto chart (frontier + attractive quadrant), switchable to bars. */
-export function CostChart({ title, desc, all, labs }: { title: string; desc?: ReactNode; all: RankedVariant[]; labs: Lab[] }) {
-  const [mode, setMode] = useState<"all" | "best">("best");
+export function CostChart({ title, desc, all, labs }: { title: string; desc?: ReactNode; all: Priced[]; labs: Lab[] }) {
+  const [mode, setMode] = useState<"all" | "best">("all");
   const [view, setView] = useScatterView("cost", "scatter");
-  return <ParetoChart ranked={all} mode={mode} labs={labs} view={view} onView={setView} anchor="cost" title={<h2 className="text-[22px]">{title}</h2>} description={desc as string}
-    actions={(picker) => <ChartSettings label={title} anchor="cost" mode={mode} onChange={setMode} view={view} onView={setView} defaultScale="log" {...(picker ?? {})} />} />;
+  const { f, release, ranked } = useScope();
+  const rows = useMemo(() => ranked(all, "all"), [ranked, all]);
+  const basis = f?.basis ?? "subscription";
+  return <ParetoChart ranked={rows} basis={basis} mode={mode} labs={labs} view={view} onView={setView} anchor="cost" title={<h2 className="text-[22px]">{title}</h2>} description={desc as string}
+    actions={(picker) => <ChartSettings label={title} anchor="cost" mode={mode} onChange={setMode} view={view} onView={setView} defaultScale="log" {...release} costBasis={f ? { value: f.basis, onChange: (b) => f.set({ basis: b }) } : undefined} {...(picker ?? {})} />} />;
 }
 
 /** One metric (speed, latency, tokens, time per task, uptime…) as score-vs-metric scatter or bars. */
@@ -83,10 +103,17 @@ export function MetricCard({ chart, title, desc, pts: allPts, labs, height = 420
   const [mode, setMode] = useState<"all" | "best">(def.defaultKind === "bars" ? "best" : "all");
   const [view, setView] = useScatterView(`metric-${chart}`, def.defaultKind, def.scale !== "time");
   const bars = view.kind === "bars" && def.scale !== "time";
-  const pts = useMemo(() => (mode === "best" ? bestPoints(allPts) : allPts), [mode, allPts]);
+  const { f, release, points } = useScope();
+  const filtered = useMemo(() => {
+    const kept = points(allPts);
+    // Pricing basis: the cost bars read each row's cost, so re-price them with the page filter.
+    return chart === "costBars" && f ? kept.flatMap((p) => { const c = f.priced(p.r as Priced).costUsd; return c ? [{ ...p, x: c }] : []; }) : kept;
+  }, [points, allPts, chart, f]);
+  const pts = useMemo(() => (mode === "best" ? bestPoints(filtered) : filtered), [mode, filtered, def.better]);
   const vis = useAllBars(pts);
   const actions = <>{def.scale !== "time" && <KindToggle bars={bars} onChange={(kind) => setView({ ...view, kind })} label={title} />}
-    <ChartSettings label={title} anchor={anchor} mode={mode} onChange={setMode} view={view} onView={setView} defaultScale={def.scale === "log" ? "log" : undefined} {...(bars ? vis.picker : {})} /></>;
+    <ChartSettings label={title} anchor={anchor} mode={mode} onChange={setMode} view={view} onView={setView} defaultScale={def.scale === "log" ? "log" : undefined} {...release}
+      costBasis={chart === "costBars" && f ? { value: f.basis, onChange: (b) => f.set({ basis: b }) } : undefined} {...(bars ? vis.picker : {})} /></>;
   if (bars) return <MetricBars pts={vis.points} labs={labs} better={def.better} xName={def.barName ?? def.xName} formatValue={def.formatX} height={height} aria={def.aria.replace("Index score versus", "By model:")} title={<Heading title={title} desc={desc} />} actions={actions} anchor={anchor} exportName={title} labelScale={view.labelScale} bestFirst />;
   return <ScoreScatter pts={pts} labs={labs} better={def.better} xName={def.xName} xShort={def.xShort} xUnit={def.xUnit} scale={def.scale} formatX={def.formatX} formatValue={def.formatValue} height={height} aria={def.aria} title={<Heading title={title} desc={desc} />} actions={actions} view={view} anchor={anchor} exportName={title} />;
 }
@@ -95,10 +122,11 @@ export function MetricCard({ chart, title, desc, pts: allPts, labs, height = 420
 export function BenchmarkBars({ title, desc, unit, higherIsBetter, pts: allPts, labs, limit = 24, anchor, more }: { title: string; desc?: ReactNode; unit: string; higherIsBetter: boolean; pts: MetricPoint[]; labs: Lab[]; height?: number; limit?: number; anchor?: string; more?: string | { href: string; label: string } }) {
   const [mode, setMode] = useState<"all" | "best">("best");
   const [view, setView] = useScatterView(`bench-${anchor ?? anchorOf(title)}`, "bars");
-  const sorted = useMemo(() => (mode === "best" ? bestPoints(allPts, !higherIsBetter) : allPts).slice().sort((a, b) => (higherIsBetter ? b.x - a.x : a.x - b.x)), [mode, allPts, higherIsBetter]);
+  const { release, points } = useScope();
+  const sorted = useMemo(() => (mode === "best" ? bestPoints(points(allPts), !higherIsBetter) : points(allPts)).slice().sort((a, b) => (higherIsBetter ? b.x - a.x : a.x - b.x)), [mode, points, allPts, higherIsBetter]);
   const vis = useAllBars(sorted);
   const rows = useMemo(() => vis.points.map((p, i) => ({ ...p.r, rank: i + 1 })), [vis.points]);
   const format = useMemo(() => unitFormats(unit), [unit]);
   return <Rankings ranked={rows} labs={labs} limit={limit} more={more} format={format} showEffort={mode === "all"} anchor={anchor ?? anchorOf(title)} title={<Heading title={title} desc={desc} />}
-    actions={<ChartSettings label={title} anchor={anchor ?? anchorOf(title)} mode={mode} onChange={setMode} view={view} onView={setView} {...vis.picker} />} />;
+    actions={<ChartSettings label={title} anchor={anchor ?? anchorOf(title)} mode={mode} onChange={setMode} view={view} onView={setView} {...release} {...vis.picker} />} />;
 }

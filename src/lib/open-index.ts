@@ -9,7 +9,7 @@ export function openIndexConfig(): IndexConfig {
     weights: Object.fromEntries(openIndex.benchmarks.map((b) => [b.id, b.weight])),
     required: [], cutoff: 5, strictness: openIndex.strictness, estimateMissing: true,
     variants: "all", rankingVariants: "best", paretoVariants: "all",
-    // Priors now defaults to subscription pricing; the Open Index is measured cost at API list prices, as the methodology says.
-    costBasis: "api",
+    // Subscription pricing by default, like Priors; charts can switch to API list prices.
+    costBasis: "subscription",
   };
 }

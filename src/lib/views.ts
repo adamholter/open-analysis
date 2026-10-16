@@ -2,15 +2,17 @@
  * Server-side chart payloads. Everything here is plain data (no functions) so it can cross into the
  * client chart components; chart formatting lives in src/lib/charts.ts.
  */
-import { computeIndex, defaultReleasedAfter, selectVariants, type IndexConfig, type RankedVariant } from "@/engine";
+import { computeIndex, selectVariants, type IndexConfig, type RankedVariant } from "@/engine";
 import type { Benchmark, BenchmarkCategory, Lab, Snapshot } from "@/data/types";
 import { metricPanels, type MetricPoint } from "@/lib/metrics";
 import { openIndexConfig, snapshot, OPEN_INDEX } from "@/lib/data";
 
 /** Drop per-benchmark detail (estimates, evidence) the charts never read: keeps page payloads small. */
-export function slim(r: RankedVariant): RankedVariant {
+export function slim(r: RankedVariant, api?: Map<string, number>): RankedVariant & { costApi?: number } {
   const v = r.variant, m = r.model;
+  const costApi = api?.get(v.id);
   return {
+    ...(costApi != null ? { costApi } : {}),
     rank: r.rank, score: r.score, coverage: r.coverage, measuredShare: r.measuredShare, onFrontier: r.onFrontier, values: [],
     ...(r.costUsd != null ? { costUsd: r.costUsd } : {}), ...(r.speed != null ? { speed: r.speed } : {}),
     model: { id: m.id, name: m.name, labId: m.labId, kind: m.kind, reasoning: m.reasoning, aliases: [], ...(m.releaseDate ? { releaseDate: m.releaseDate } : {}) },
@@ -18,19 +20,7 @@ export function slim(r: RankedVariant): RankedVariant {
       ...(v.sourceModel ? { sourceModel: { id: v.sourceModel.id, slug: v.sourceModel.slug, name: v.sourceModel.name, url: "" } } : {}) },
   };
 }
-const slimPoints = (pts: MetricPoint[]) => pts.map((p) => ({ ...p, r: slim(p.r) }));
-
-export interface IndexView { id: string; name: string; description: string; benchmarks: { id: string; name: string; share: number }[]; best: RankedVariant[]; all: RankedVariant[] }
-
-function indexView(snap: Snapshot, config: IndexConfig, description: string): IndexView {
-  const result = computeIndex(snap, config);
-  return {
-    id: config.id, name: config.name, description,
-    benchmarks: result.benchmarks.map((b) => ({ id: b.benchmark.id, name: b.benchmark.name, share: b.share })),
-    best: selectVariants(result.ranked, "best").map(slim),
-    all: selectVariants(result.ranked, "all").map(slim),
-  };
-}
+const slimPoints = (pts: MetricPoint[], api?: Map<string, number>) => pts.map((p) => ({ ...p, r: slim(p.r, api) }));
 
 const memo = new Map<string, unknown>();
 function cached<T>(key: string, make: () => T): T {
@@ -38,11 +28,35 @@ function cached<T>(key: string, make: () => T): T {
   return memo.get(key) as T;
 }
 
+export interface IndexView { id: string; name: string; description: string; benchmarks: { id: string; name: string; share: number }[]; best: RankedVariant[]; all: (RankedVariant & { costApi?: number })[] }
+
+/** Charts get a year of models; the page's release-window filter (default 3 months) narrows it in the browser. */
+export const WINDOW_MONTHS = 12;
+const windowAfter = (snap: Snapshot) => { const d = new Date(snap.date); d.setUTCMonth(d.getUTCMonth() - WINDOW_MONTHS); return d.toISOString().slice(0, 10); };
+const windowed = (snap: Snapshot, config: IndexConfig): IndexConfig => ({ ...config, releasedAfter: windowAfter(snap) });
+
+/** API-list-price cost per variant, to sit beside the default subscription cost the engine prices. */
+function apiCosts(snap: Snapshot, config: IndexConfig) {
+  return cached(`api:${config.id}`, () => new Map(computeIndex(snap, { ...config, costBasis: "api" }).ranked.flatMap((r) => (r.costUsd != null ? [[r.variant.id, r.costUsd] as const] : []))));
+}
+
+function indexView(snap: Snapshot, base: IndexConfig, description: string): IndexView {
+  const config = windowed(snap, base);
+  const api = apiCosts(snap, config);
+  const result = computeIndex(snap, config);
+  return {
+    id: config.id, name: config.name, description,
+    benchmarks: result.benchmarks.map((b) => ({ id: b.benchmark.id, name: b.benchmark.name, share: b.share })),
+    best: selectVariants(result.ranked, "best").map((r) => slim(r, api)),
+    all: selectVariants(result.ranked, "all").map((r) => slim(r, api)),
+  };
+}
+
 export const openIndexView = () => cached("open", () => indexView(snapshot(), openIndexConfig(), `Equal-weight average of ${OPEN_INDEX.benchmarks.length} independent benchmarks.`));
 
 /** Models released in the default window: the population capability indexes and benchmark charts are judged on. */
 function recentModels(snap: Snapshot) {
-  const after = defaultReleasedAfter(snap.date);
+  const after = windowAfter(snap);
   return new Set(snap.models.filter((m) => !m.releaseDate || m.releaseDate >= after).map((m) => m.id));
 }
 
@@ -126,11 +140,13 @@ export function publisherOf(b: Benchmark): string {
 /** Metric panels (latency, tokens, time per task, release date, uptime, usage) as plain points, on the Open Index ranking. */
 export const metricViews = () => cached("metrics", () => {
   const snap = snapshot();
-  const result = computeIndex(snap, openIndexConfig());
+  const config = windowed(snap, openIndexConfig());
+  const api = apiCosts(snap, config);
+  const result = computeIndex(snap, config);
   const ranked = selectVariants(result.ranked, "all");
-  const panels = metricPanels(snap, ranked).filter((p) => p.chart).map((p) => ({ id: p.id, title: p.title, desc: p.desc, points: slimPoints(p.chart!.points(ranked)) }));
-  const speed = ranked.filter((r) => r.speed && r.speed > 0).map((r) => ({ x: r.speed!, r: slim(r) }));
-  const cost = ranked.filter((r) => r.costUsd != null && r.costUsd > 0).map((r) => ({ x: r.costUsd!, r: slim(r) }));
+  const panels = metricPanels(snap, ranked).filter((p) => p.chart).map((p) => ({ id: p.id, title: p.title, desc: p.desc, points: slimPoints(p.chart!.points(ranked), api) }));
+  const speed = ranked.filter((r) => r.speed && r.speed > 0).map((r) => ({ x: r.speed!, r: slim(r, api) }));
+  const cost = ranked.filter((r) => r.costUsd != null && r.costUsd > 0).map((r) => ({ x: r.costUsd!, r: slim(r, api) }));
   return { panels, speed, cost };
 });
 
@@ -147,8 +163,11 @@ export const openness = () => cached("openness", () => {
       if (typeof flag === "boolean") { open.set(v.modelId, flag); break; }
     }
   }
-  const best = openIndexView().best;
-  return { open: best.filter((r) => open.get(r.model.id) === true), closed: best.filter((r) => open.get(r.model.id) === false), known: open };
+  const { best, all } = openIndexView();
+  return {
+    open: best.filter((r) => open.get(r.model.id) === true), closed: best.filter((r) => open.get(r.model.id) === false), known: open,
+    openAll: all.filter((r) => open.get(r.model.id) === true),
+  };
 });
 
 /** Provider count per model (OpenRouter), on each model's best Open Index effort. */
@@ -157,8 +176,18 @@ export const providers = () => cached("providers", () => {
   const variantModel = new Map(snap.variants.map((v) => [v.id, v.modelId]));
   const count = new Map<string, number>();
   for (const o of snap.observations) if (o.benchmarkId === "openrouter-providers") { const m = variantModel.get(o.variantId); if (m) count.set(m, Math.max(count.get(m) ?? 0, o.value)); }
-  return openIndexView().best.filter((r) => count.has(r.model.id)).map((r) => ({ x: count.get(r.model.id)!, r }));
+  return openIndexView().all.filter((r) => count.has(r.model.id)).map((r) => ({ x: count.get(r.model.id)!, r }));
 });
+
+/** Everything the page-wide model picker needs: one row per model (best score) and the efforts that exist. */
+export const pickerData = () => cached("picker", () => {
+  const { all } = openIndexView();
+  const best = new Map<string, PickerRow>();
+  for (const r of all) { const cur = best.get(r.model.id); if (!cur || r.score > cur.score) best.set(r.model.id, { id: r.model.id, name: r.model.name, labId: r.model.labId, ...(r.model.releaseDate ? { releaseDate: r.model.releaseDate } : {}), score: r.score }); }
+  const dates = Object.fromEntries(snapshot().models.flatMap((m) => (m.releaseDate && m.releaseDate >= windowAfter(snapshot()) ? [[m.id, m.releaseDate] as const] : [])));
+  return { asOf: snapshot().date, models: [...best.values()].sort((a, b) => b.score - a.score), efforts: [...new Set(all.map((r) => r.variant.effort))], dates };
+});
+export interface PickerRow { id: string; name: string; labId: string; releaseDate?: string; score: number }
 
 export const labs = (): Lab[] => snapshot().labs;
 
