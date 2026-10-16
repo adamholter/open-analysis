@@ -328,7 +328,8 @@ p.share-change { display: grid; grid-template-columns: minmax(0, 1fr) 40% 38px; 
 .oa-header-end { margin-left: auto; display: flex; align-items: center; gap: 10px; }
 .oa-theme { display: inline-grid; place-items: center; width: 36px; height: 36px; border-radius: 999px; background: var(--hair-2); color: var(--ink); border: 0; cursor: pointer; }
 .oa-theme:hover { background: var(--hair); }
-html[data-theme="dark"] body { background: #0A0A0A; }
+html[data-theme="dark"], html[data-theme="dark"] body { background: #0A0A0A; color-scheme: dark; }
+html[data-theme="dark"] .oa-root:not([data-ready]) > * { visibility: hidden; }
 .oa-cta { background: var(--panel-accent); color: #fff; border-radius: 8px; padding: 7px 14px; font-size: 14px; font-weight: 500; text-decoration: none; white-space: nowrap; }
 .oa-cta:hover { opacity: .9; }
 .oa-body { max-width: 1440px; margin: 0 auto; padding: 0 28px; display: grid; grid-template-columns: 196px minmax(0, 1fr); gap: 40px; }

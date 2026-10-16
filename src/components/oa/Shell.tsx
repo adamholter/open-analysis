@@ -28,13 +28,15 @@ export const THEME_SCRIPT = `try{var m=localStorage.getItem("${STORE}");var d=m=
 export function Shell({ models, children }: { models: { id: string; name: string; color?: string }[]; children: ReactNode }) {
   const [mode, setMode] = useState<Mode>("system");
   const [systemDark, setSystemDark] = useState(false);
+  // The server renders the light theme; until the browser's real scheme is applied, dark visitors see a dark blank page, not a flash of white.
+  const [ready, setReady] = useState(false);
   useEffect(() => {
     const saved = localStorage.getItem(STORE);
     // eslint-disable-next-line react-hooks/set-state-in-effect -- read the saved theme after hydration
     if (saved === "light" || saved === "dark") setMode(saved);
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
     const on = () => setSystemDark(mq.matches);
-    on(); mq.addEventListener("change", on);
+    on(); setReady(true); mq.addEventListener("change", on); // eslint-disable-line react-hooks/set-state-in-effect -- reveal after the scheme is applied
     return () => mq.removeEventListener("change", on);
   }, []);
   const dark = mode === "system" ? systemDark : mode === "dark";
@@ -58,7 +60,7 @@ export function Shell({ models, children }: { models: { id: string; name: string
     <ThemeContext.Provider value={theme}>
     <ChartPaletteContext.Provider value={palette}>
       <HighlightContext.Provider value={highlight}>
-        <div className="page-root oa-root min-h-screen" data-dark={preset.dark || undefined} data-family="aa" style={presetStyle(preset) as React.CSSProperties}>{children}</div>
+        <div className="page-root oa-root min-h-screen" data-ready={ready || undefined} data-dark={preset.dark || undefined} data-family="aa" style={presetStyle(preset) as React.CSSProperties}>{children}</div>
       </HighlightContext.Provider>
     </ChartPaletteContext.Provider>
     </ThemeContext.Provider>
