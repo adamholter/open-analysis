@@ -78,9 +78,11 @@ const KindToggle = ({ bars, onChange, label }: { bars: boolean; onChange: (k: "b
 export function IndexBars({ title, desc, all, labs, limit = 30, more }: { title: string; desc?: ReactNode; best?: RankedVariant[]; all: Priced[]; labs: Lab[]; height?: number; limit?: number; more?: string | { href: string; label: string } }) {
   const [mode, setMode] = useState<"all" | "best">("best");
   const [view, setView] = useScatterView(`index-${anchorOf(title)}`, "bars");
-  const { release, ranked } = useScope();
+  const { f, release, ranked } = useScope();
   const rows = useMemo(() => ranked(all, mode), [ranked, all, mode]);
   const vis = useAllBars(useMemo(() => rows.map((r) => ({ x: r.score, r })), [rows]));
+  // The page filters can hide every model; say so and offer the way back instead of blaming the index.
+  if (!rows.length && f && !f.isDefault) return <><Heading title={title} desc={desc} /><p className="cap py-6">The page filters hide every model for this chart. <button type="button" className="underline" onClick={f.reset}>Reset filters</button></p></>;
   return <Rankings ranked={vis.points.map((p) => p.r)} labs={labs} limit={limit} more={more} showEffort={mode === "all"} anchor={anchorOf(title)} title={<Heading title={title} desc={desc} />}
     actions={<ChartSettings label={title} anchor={anchorOf(title)} mode={mode} onChange={setMode} view={view} onView={setView} {...release} {...vis.picker} />} />;
 }
