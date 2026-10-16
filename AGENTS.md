@@ -9,7 +9,7 @@ Simple, fixed-index sibling of Priors (`~/priors`, mypriors.com): "Artificial An
 - Index and single-benchmark charts use Priors' `Rankings` (columns under the Analysis theme). Metric charts use `MetricBars`/`ScoreScatter` unchanged; `src/components/oa/Charts.tsx` shows every model in bars instead of Priors' frontier+top-3 default.
 - Home page filters (`src/components/oa/Filters.tsx`): `FiltersProvider` holds release window (default 3 months), reasoning efforts (default `none` off), pricing basis (default subscription), and per-model on/off; persisted in `localStorage["oa:filters"]`. Server payloads (`views.ts`) cover 12 months and carry `costApi`; charts filter client-side via `useScope()` in `Charts.tsx`. Cost Pareto defaults to all efforts.
 - Pages render inside `Shell` (aa / aa-dark preset; system default, header toggle saved in `localStorage["oa:theme"]`; shared highlight via `?hl=`). Server builds plain chart payloads in `src/lib/views.ts`; formatters live client-side in `src/lib/charts.ts`. Benchmark grid points are compact tuples to keep the page ~200 KB gzipped.
-- `npm run data` rebuilds `data/snapshot.json.gz` from the local Priors snapshot when `~/priors` exists, else from GitHub raw. All Priors sources are included (`config/upstream.json` `excludeSources` is empty).
+- `npm run data` rebuilds `data/snapshot.json.gz` from Priors' latest snapshot on GitHub raw (not the local `~/priors` checkout, which lags). All Priors sources are included (`config/upstream.json` `excludeSources` is empty).
 - Dev server: port 48760. Run `npm run validate` before handoff.
 - Public repo: github.com/adamholter/open-analysis. No domain or deploy yet; ask Adam before creating either.
 

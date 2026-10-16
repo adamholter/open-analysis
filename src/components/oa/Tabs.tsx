@@ -5,7 +5,7 @@ import type { Lab } from "@/data/types";
 import type { Effort } from "@/data/types";
 import type { MetricPoint } from "@/lib/metrics";
 import type { IndexView, BenchmarkChart, ChartModel } from "@/lib/views";
-import { BenchmarkBars, IndexBars } from "./Charts";
+import { BenchmarkBars, IndexBars, useScope } from "./Charts";
 import { categoryLabel } from "@/lib/categories";
 
 const pct = (s: number) => `${Math.round(s)}%`;
@@ -38,30 +38,35 @@ function decode(models: ChartModel[], points: BenchmarkChart["points"]): MetricP
   });
 }
 
-function BenchmarkCard({ c, models, labs }: { c: BenchmarkChart; models: ChartModel[]; labs: Lab[] }) {
-  const pts = useMemo(() => decode(models, c.points), [models, c.points]);
+function BenchmarkCard({ c, pts, count, labs }: { c: BenchmarkChart; pts: MetricPoint[]; count: number; labs: Lab[] }) {
   return (
     <div className="chart-panel oa-small">
       <BenchmarkBars anchor={`b-${c.id}`} title={c.name} unit={c.unit} higherIsBetter={c.higherIsBetter} pts={pts} labs={labs} height={300} limit={20} more={{ href: `/benchmarks/${c.id}`, label: `all ${c.models} results` }}
-        desc={<><Link href={`/benchmarks/${c.id}`}>{c.publisher}</Link>{c.community && <span className="oa-badge">community</span>} · {categoryLabel(c.category)} · {c.models} recent models{c.updated ? ` · updated ${c.updated}` : ""}</>} />
+        desc={<><Link href={`/benchmarks/${c.id}`}>{c.publisher}</Link>{c.community && <span className="oa-badge">community</span>} · {categoryLabel(c.category)} · {count} recent models{c.updated ? ` · updated ${c.updated}` : ""}</>} />
     </div>
   );
 }
 
 export function BenchmarkGrid({ charts, models, labs, initial = 12 }: { charts: BenchmarkChart[]; models: ChartModel[]; labs: Lab[]; initial?: number }) {
-  const cats = [...new Set(charts.map((c) => c.category))].sort((a, b) => categoryLabel(a).localeCompare(categoryLabel(b)));
   const [cat, setCat] = useState<string | null>(null);
   const [more, setMore] = useState(false);
-  const shown = charts.filter((c) => !cat || c.category === cat);
+  const { points } = useScope();
+  // Boards with no result inside the page filters (e.g. a retired eval with nothing from the last 3 months) have nothing to draw: leave them out.
+  const live = useMemo(() => charts.flatMap((c) => {
+    const pts = decode(models, c.points), kept = points(pts), count = new Set(kept.map((p) => p.r.model.id)).size;
+    return count ? [{ c, pts, count }] : [];
+  }), [charts, models, points]);
+  const cats = [...new Set(live.map((x) => x.c.category))].sort((a, b) => categoryLabel(a).localeCompare(categoryLabel(b)));
+  const shown = live.filter((x) => !cat || x.c.category === cat);
   const visible = more ? shown : shown.slice(0, initial);
   return (
     <div>
       <div className="oa-chips mb-6">
-        <button type="button" aria-pressed={!cat} onClick={() => setCat(null)}>All ({charts.length})</button>
+        <button type="button" aria-pressed={!cat} onClick={() => setCat(null)}>All ({live.length})</button>
         {cats.map((c) => <button key={c} type="button" aria-pressed={cat === c} onClick={() => setCat(c)}>{categoryLabel(c)}</button>)}
       </div>
       <div className="oa-grid2">
-        {visible.map((c) => <BenchmarkCard key={c.id} c={c} models={models} labs={labs} />)}
+        {visible.map((x) => <BenchmarkCard key={x.c.id} {...x} labs={labs} />)}
       </div>
       {shown.length > initial && <p className="mt-6 text-center"><button type="button" className="btn-quiet" onClick={() => setMore(!more)}>{more ? "Show fewer" : `Show all ${shown.length} benchmarks`}</button></p>}
     </div>

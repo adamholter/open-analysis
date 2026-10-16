@@ -1,6 +1,5 @@
 {
   "$comment": "Open Analysis reuses the Priors scraper output for public benchmarks, then merges community/ benchmarks on top. Sources listed in excludeSources are dropped entirely.",
   "snapshotUrl": "https://raw.githubusercontent.com/adamholter/priors/main/data/snapshots/latest.json.gz",
-  "localSnapshot": "../../priors/data/snapshots/latest.json.gz",
   "excludeSources": []
 }

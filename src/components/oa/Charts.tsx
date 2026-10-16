@@ -49,7 +49,7 @@ function useAllBars(pts: MetricPoint[]) {
 }
 
 /** Page-wide filter settings every chart shows in its menu (absent outside the home page's FiltersProvider). */
-function useScope() {
+export function useScope() {
   const f = useOptionalFilters();
   const release = useMemo(() => (f ? { releaseWindow: { months: f.months, options: WINDOWS, onChange: (months: number) => f.set({ months: months as (typeof WINDOWS)[number] }) } } : {}), [f]);
   const points = useCallback(<T extends MetricPoint>(p: T[]): T[] => (f ? f.points(p) : p), [f]);
