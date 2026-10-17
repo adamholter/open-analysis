@@ -33,7 +33,7 @@ claude-opus-5.5,xhigh,43.0,0.19,103,Claude Code,https://example.com/run-1
 
 - `model`: an id from the site's Models page. Common names usually match too.
 - `effort`: none, minimal, low, medium, high, xhigh, max. Blank means the model's highest effort.
-- `score` is required. `cost_usd` and `duration_sec` are per task. `source_url` (per row) is optional; a blank value uses the benchmark's `url`.
+- `score` is required. `cost_usd` and `duration_sec` are per task and can't be negative. `source_url` (per row) is optional; a blank value uses the benchmark's `url`.
 - Blank cells are ignored. Blank `model` or `score` fails validation. Blank `effort` uses the model's highest known effort; blank `cost_usd`, `duration_sec`, and `harness` are omitted.
 - One row per model and effort. Publish complete runs only.
 

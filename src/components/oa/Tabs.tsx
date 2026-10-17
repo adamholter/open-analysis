@@ -50,7 +50,7 @@ function BenchmarkCard({ c, pts, count, labs }: { c: BenchmarkChart; pts: Metric
 export function BenchmarkGrid({ charts, models, labs, initial = 12 }: { charts: BenchmarkChart[]; models: ChartModel[]; labs: Lab[]; initial?: number }) {
   const [cat, setCat] = useState<string | null>(null);
   const [more, setMore] = useState(false);
-  const { points } = useScope();
+  const { f, points } = useScope();
   // Boards with no result inside the page filters (e.g. a retired eval with nothing from the last 3 months) have nothing to draw: leave them out.
   const live = useMemo(() => charts.flatMap((c) => {
     const pts = decode(models, c.points), kept = points(pts), count = new Set(kept.map((p) => p.r.model.id)).size;
@@ -65,6 +65,7 @@ export function BenchmarkGrid({ charts, models, labs, initial = 12 }: { charts: 
         <button type="button" aria-pressed={!cat} onClick={() => setCat(null)}>All ({live.length})</button>
         {cats.map((c) => <button key={c} type="button" aria-pressed={cat === c} onClick={() => setCat(c)}>{categoryLabel(c)}</button>)}
       </div>
+      {!live.length && <p className="cap py-6">No benchmark has results under the page filters.{f && !f.isDefault && <> <button type="button" className="underline" onClick={f.reset}>Reset filters</button></>}</p>}
       <div className="oa-grid2">
         {visible.map((x) => <BenchmarkCard key={x.c.id} {...x} labs={labs} />)}
       </div>

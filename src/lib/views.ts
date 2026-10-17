@@ -185,7 +185,7 @@ export const pickerData = () => cached("picker", () => {
   const best = new Map<string, PickerRow>();
   for (const r of all) { const cur = best.get(r.model.id); if (!cur || r.score > cur.score) best.set(r.model.id, { id: r.model.id, name: r.model.name, labId: r.model.labId, ...(r.model.releaseDate ? { releaseDate: r.model.releaseDate } : {}), score: r.score }); }
   const dates = Object.fromEntries(snapshot().models.flatMap((m) => (m.releaseDate && m.releaseDate >= windowAfter(snapshot()) ? [[m.id, m.releaseDate] as const] : [])));
-  return { asOf: snapshot().date, models: [...best.values()].sort((a, b) => b.score - a.score), efforts: [...new Set(all.map((r) => r.variant.effort))], dates };
+  return { asOf: snapshot().date, models: [...best.values()].sort((a, b) => b.score - a.score), efforts: [...new Set([...all.map((r) => r.variant.effort), ...snapshot().variants.map((v) => v.effort)])], dates };
 });
 export interface PickerRow { id: string; name: string; labId: string; releaseDate?: string; score: number }
 
