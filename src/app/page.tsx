@@ -13,7 +13,7 @@ const SECTIONS = [
   { id: "benchmarks", label: "Benchmarks" },
   { id: "openness", label: "Open Weights" },
   { id: "tokens", label: "Output Tokens" },
-  { id: "cost", label: "Cost" },
+  { id: "cost-section", label: "Cost" },
   { id: "speed", label: "Speed & Latency" },
   { id: "providers", label: "Providers" },
   { id: "trends", label: "Trends" },
@@ -56,7 +56,7 @@ export default function Home() {
           <h2>Intelligence</h2>
           <div className="chart-panel">
             <IndexBars title={`${OPEN_INDEX.name}`} all={index.all} labs={L} more={{ href: "#leaderboard", label: "all models in the table below" }}
-              desc={<>Incorporates {index.benchmarks.length} evaluations: {index.benchmarks.map((b, n) => <span key={b.id}>{n ? ", " : ""}<Link href={`/benchmarks/${b.id}`}>{b.name}</Link></span>)} · Higher is better · <Link href="/methodology">Methodology</Link></>} />
+              desc={<>Equal-weight average of {index.benchmarks.length} independent benchmarks: {index.benchmarks.map((b, n) => <span key={b.id}>{n ? ", " : ""}<Link href={`/benchmarks/${b.id}`}>{b.name}</Link></span>)} · Missing results may use peer estimates · Higher is better · <Link href="/methodology">Methodology</Link></>} />
           </div>
           <div className="chart-panel">
             <CostChart title="Intelligence vs. Cost per Task" all={index.all} labs={L} desc="Open Index against measured cost per task, log scale. The shaded area is cheaper and smarter than the median." />
@@ -92,7 +92,7 @@ export default function Home() {
           <div className="chart-panel"><MetricCard chart="tokens" title="Output Tokens per Task" desc={tokens.desc} pts={tokens.points} labs={L} /></div>
         </section>}
 
-        <section id="cost" className="oa-section">
+        <section id="cost-section" className="oa-section">
           <h2>Cost</h2>
           <p className="lede">Measured cost to complete a task, not token price. Reasoning-heavy models can cost more per task even at lower list prices.</p>
           <div className="chart-panel"><MetricCard chart="costBars" title="Cost per Task" desc="Measured cost per task in USD · lower is better" pts={metrics.cost} labs={L} /></div>

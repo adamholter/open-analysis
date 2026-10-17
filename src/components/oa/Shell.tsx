@@ -3,6 +3,7 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 import { ChartPaletteContext, paletteFor } from "@/components/chart/echarts";
 import { HighlightContext } from "@/components/chart/highlight";
 import { presetStyle, themeById } from "@/lib/page-presets";
+import { savedThemeMode } from "@/lib/site-theme";
 import "@/components/page/page-themes.css";
 
 type Mode = "system" | "light" | "dark";
@@ -22,7 +23,7 @@ export function ThemeToggle() {
 }
 
 /** Runs before paint so a saved dark choice doesn't flash white. */
-export const THEME_SCRIPT = `try{var m=localStorage.getItem("${STORE}");var d=m==="dark"||(m!=="light"&&matchMedia("(prefers-color-scheme: dark)").matches);document.documentElement.dataset.theme=d?"dark":"light"}catch(e){}`;
+export const THEME_SCRIPT = `try{var m=localStorage.getItem("${STORE}");var d=m==="dark"?true:m==="light"?false:matchMedia("(prefers-color-scheme: dark)").matches;document.documentElement.dataset.theme=d?"dark":"light"}catch(e){}`;
 
 /** Every page renders inside Priors' "Analysis" theme (aa / aa-dark, following the system scheme) with one shared highlight set. */
 export function Shell({ models, children }: { models: { id: string; name: string; color?: string }[]; children: ReactNode }) {
@@ -31,12 +32,14 @@ export function Shell({ models, children }: { models: { id: string; name: string
   // The server renders the light theme; until the browser's real scheme is applied, dark visitors see a dark blank page, not a flash of white.
   const [ready, setReady] = useState(false);
   useEffect(() => {
-    const saved = localStorage.getItem(STORE);
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- read the saved theme after hydration
-    if (saved === "light" || saved === "dark") setMode(saved);
+    const saved = savedThemeMode(localStorage.getItem(STORE));
+    if (saved !== "system") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- apply an explicit saved choice after hydration
+      setMode(saved);
+    }
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
     const on = () => setSystemDark(mq.matches);
-    on(); setReady(true); mq.addEventListener("change", on); // eslint-disable-line react-hooks/set-state-in-effect -- reveal after the scheme is applied
+    on(); setReady(true); mq.addEventListener("change", on);
     return () => mq.removeEventListener("change", on);
   }, []);
   const dark = mode === "system" ? systemDark : mode === "dark";

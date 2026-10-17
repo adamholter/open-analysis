@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ScatterPoint } from "./scatter-option";
-import { barAxis, barLayout, barSlotMin, barSlotsThatFit, defaultBarModels, filterBarModels, barLabelFit, selectBars } from "./bars-option";
+import { barAxis, barLayout, barSlotMin, barSlotsThatFit, barsOption, defaultBarModels, filterBarModels, barLabelFit, selectBars } from "./bars-option";
+import { LIGHT_PALETTE } from "./theme";
 
 const point = (model: string, effort: string, score: number, metric: number): ScatterPoint => ({
   x: metric,
@@ -106,4 +107,14 @@ it("picks whole-number axes whose last tick is the top, with 5-8 intervals", () 
   }
   expect(barAxis(0, 14)).toMatchObject({ max: 16, interval: 2 });
   expect(barAxis(0, 684)).toMatchObject({ max: 800, interval: 100 });
+});
+
+it("uses transformed coordinates for bar spacing while labels retain raw values", () => {
+  const uptime = { ...point("alpha", "default", 90, 1), raw: 99.9 };
+  const option = barsOption({ bars: [uptime], labs: [], xName: "Uptime (%)", formatValue: (v) => `${v.toFixed(1)}%`, formatAxis: (v) => `${(100 - 10 ** -v).toFixed(2)}%`, coordinate: (p) => p.x, pal: LIGHT_PALETTE, narrow: true });
+  const series = option.series as { data: { value: number; point: ScatterPoint }[]; label: { formatter: (p: { value: number; data: { point: ScatterPoint } }) => string } }[];
+  const axis = option.yAxis as { axisLabel: { formatter: (v: number) => string } };
+  expect(series[0].data[0].value).toBe(1);
+  expect(axis.axisLabel.formatter(1)).toBe("99.90%");
+  expect(series[0].label.formatter({ value: 1, data: series[0].data[0] })).toBe("99.9%");
 });

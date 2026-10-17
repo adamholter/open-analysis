@@ -23,10 +23,10 @@ const value = (p: ScatterPoint) => p.raw ?? p.x;
  * applies: best mode shows one bar per model, all mode shows every effort. Capped at `limit`
  * points by index score so the axis stays readable.
  */
-export function MetricBars({ pts: allPoints, labs, better, xName, formatValue, height = 400, aria, title, actions, limit = 24, exportName, anchor, linkParams, labelScale, bestFirst }: {
+export function MetricBars({ pts: allPoints, labs, better, xName, formatValue, formatAxis, coordinate, height = 400, aria, title, actions, limit = 24, exportName, anchor, linkParams, labelScale, bestFirst }: {
   /** Custom formulas: draw the best value first (descending when higher is better) rather than always ascending. */
   bestFirst?: boolean;
-  pts: ScatterPoint[]; labs: Lab[]; better: "lower" | "higher"; xName: string; formatValue: (x: number) => string;
+  pts: ScatterPoint[]; labs: Lab[]; better: "lower" | "higher"; xName: string; formatValue: (x: number) => string; formatAxis?: (x: number) => string; coordinate?: (p: ScatterPoint) => number;
   labelScale?: number; height?: number; aria: string; title?: ReactNode; actions?: ReactNode; limit?: number; exportName: string; anchor?: string; linkParams?: ChartLinkParams;
 }) {
   const wrap = useRef<HTMLDivElement>(null);
@@ -54,7 +54,7 @@ export function MetricBars({ pts: allPoints, labs, better, xName, formatValue, h
     while (fitSlots && n > 1 && slotsOf(out) > fitSlots) out = build(--n);
     return out;
   }, [pts, better, limit, highlight, bestFirst, fitSlots, expand.expanded]);
-  const option = useMemo<EChartsOption>(() => barsOption({ bars, labs, xName, formatValue, pal, narrow, highlight, labelScale: fontScale, width, height: Math.round(height * (pal.size?.height ?? 1)) }), [bars, labs, xName, formatValue, narrow, pal, highlight, fontScale, width, height]);
+  const option = useMemo<EChartsOption>(() => barsOption({ bars, labs, xName, formatValue, formatAxis, coordinate, pal, narrow, highlight, labelScale: fontScale, width, height: Math.round(height * (pal.size?.height ?? 1)) }), [bars, labs, xName, formatValue, formatAxis, coordinate, narrow, pal, highlight, fontScale, width, height]);
   const pick = useRef<(p: ScatterPoint) => void>(() => {});
   useEffect(() => { pick.current = (p) => { if (hl) hl.set(togglePoint(hl.items, pts, p)); }; }, [hl, pts]);
   const { ref, chart } = useEChart(option, [option], (c) => {

@@ -33,4 +33,18 @@ describe("community benchmarks", () => {
     expect(run([{ model: "claude-opus-5.5", score: "1" }], { ...spec, id: "taken" }, "taken").issues[0].message).toMatch(/already used/);
     expect(run([{ model: "claude-opus-5.5", score: "1" }], { ...spec, unit: "score" }).issues[0].message).toMatch(/scale/);
   });
+
+  it("does not leak models or variants from a rejected benchmark", () => {
+    const { snapshot, issues, added } = run([
+      { model: "gpt-99-sol high", score: "42" },
+      { model: "claude-opus-5.5", score: "not-a-number" },
+    ]);
+
+    expect(issues).toHaveLength(1);
+    expect(snapshot.models.some((model) => model.id === "gpt-99-sol")).toBe(false);
+    expect(snapshot.variants.some((variant) => variant.id === "gpt-99-sol@high")).toBe(false);
+    expect(snapshot.benchmarks.some((benchmark) => benchmark.id === "my-bench")).toBe(false);
+    expect(snapshot.observations).toEqual(base.observations);
+    expect(added).toEqual({ benchmarks: 0, observations: 0, models: 0 });
+  });
 });

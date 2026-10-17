@@ -2,7 +2,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { IconAdjustmentsHorizontal, IconRotate, IconSearch, IconX } from "@tabler/icons-react";
 import type { Lab } from "@/data/types";
-import { EFFORT_ORDER } from "@/data/types";
+import { reasoningEffortChips } from "@/lib/filters";
 import type { RankedVariant } from "@/engine";
 import type { MetricPoint } from "@/lib/metrics";
 import type { CostBasis } from "@/data/subscription";
@@ -110,7 +110,7 @@ export function useFilters(): Filters {
 /** Charts outside the provider (model pages) fall back to showing everything. */
 export const useOptionalFilters = () => useContext(Ctx);
 
-const EFFORT_LABEL: Record<string, string> = { none: "none", minimal: "minimal", low: "low", medium: "medium", high: "high", xhigh: "xhigh", max: "max" };
+const EFFORT_LABEL: Record<string, string> = { none: "none", minimal: "minimal", low: "low", medium: "medium", high: "high", xhigh: "xhigh", max: "max", default: "default" };
 
 /** Models drawer: the same selection every chart on the page follows. */
 function ModelsDrawer({ labs, onClose, within }: { labs: Lab[]; onClose: () => void; /** Clicks inside this element (the filter bar, including its Models button) don't dismiss. */ within: React.RefObject<HTMLElement | null> }) {
@@ -161,7 +161,7 @@ function ModelsDrawer({ labs, onClose, within }: { labs: Lab[]; onClose: () => v
         <button type="button" aria-label="Close" onClick={onClose}><IconX size={16} stroke={1.5} aria-hidden="true" /></button></div>
       <label className="oa-msearch"><IconSearch size={15} stroke={1.5} aria-hidden="true" /><input type="search" aria-label="Find models" placeholder="Find models" value={query} onChange={(e) => setQuery(e.target.value)} /></label>
       <section><h3>Reasoning</h3>
-        <div className="oa-mchips">{EFFORT_ORDER.filter((e) => f.efforts.includes(e)).map((e) => {
+        <div className="oa-mchips">{reasoningEffortChips(f.efforts).map((e) => {
           const on = !f.effortsOff.includes(e);
           return <button key={e} type="button" aria-pressed={on} onClick={() => f.toggleEffort(e)}>{EFFORT_LABEL[e] ?? e}</button>;
         })}</div></section>

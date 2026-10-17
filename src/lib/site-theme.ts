@@ -9,6 +9,10 @@ import { presetStyle, themeById, type PagePreset } from "./page-presets";
 export const SITE_THEME_KEY = "priors:site-theme";
 export const DEFAULT_SITE_THEME = "bone";
 
+export function savedThemeMode(value: string | null): "system" | "light" | "dark" {
+  return value === "light" || value === "dark" ? value : "system";
+}
+
 /** What localStorage holds: the theme id plus the tokens of each mode, so the head script can paint them before React loads. */
 export interface SavedSiteTheme { id: string; light?: Record<string, string>; dark?: Record<string, string> }
 

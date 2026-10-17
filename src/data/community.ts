@@ -63,8 +63,6 @@ function maxEffort(snap: Snapshot, modelId: string): Effort {
 export function loadCommunity(base: Snapshot, inputs: CommunityInput[], observedAt: string) {
   const issues: CommunityIssue[] = [];
   const snap: Snapshot = { ...base, models: [...base.models], variants: [...base.variants], benchmarks: [...base.benchmarks], observations: [...base.observations] };
-  const resolve = modelResolver(snap);
-  const variantIds = new Set(snap.variants.map((v) => v.id));
   const added = { benchmarks: 0, observations: 0, models: 0 };
 
   for (const input of inputs) {
@@ -76,6 +74,16 @@ export function loadCommunity(base: Snapshot, inputs: CommunityInput[], observed
     if (snap.benchmarks.some((b) => b.id === spec.id)) { err(`id "${spec.id}" is already used by an upstream benchmark`); continue; }
     if (!input.rows.length) { err("results.csv is missing or empty"); continue; }
 
+    // Stage model and variant resolution per benchmark. A bad row must not
+    // leave records created by otherwise-valid rows in the shared snapshot.
+    const staged: Snapshot = {
+      ...snap,
+      models: snap.models.map((model) => ({ ...model, aliases: [...model.aliases] })),
+      variants: [...snap.variants],
+    };
+    const resolve = modelResolver(staged);
+    const variantIds = new Set(staged.variants.map((v) => v.id));
+    let addedModels = 0;
     const observations: Observation[] = [];
     const seen = new Map<string, number>();
     input.rows.forEach((raw, i) => {
@@ -91,10 +99,10 @@ export function loadCommunity(base: Snapshot, inputs: CommunityInput[], observed
       const variantId = `${hit.model.id}@${effort}`;
       if (seen.has(variantId)) { err(`duplicate result for ${variantId} (also row ${seen.get(variantId)})`, line); return; }
       seen.set(variantId, line);
-      if (hit.created) { snap.models.push(hit.model); added.models++; }
+      if (hit.created) { staged.models.push(hit.model); addedModels++; }
       if (!variantIds.has(variantId)) {
         const v: Variant = { id: variantId, modelId: hit.model.id, effort };
-        snap.variants.push(v); variantIds.add(variantId);
+        staged.variants.push(v); variantIds.add(variantId);
         if (effort !== "default" && !hit.model.reasoning) hit.model.reasoning = true;
       }
       observations.push({
@@ -106,6 +114,8 @@ export function loadCommunity(base: Snapshot, inputs: CommunityInput[], observed
     });
     if (issues.some((x) => x.dir === input.dir && x.level === "error")) continue;
 
+    snap.models = staged.models;
+    snap.variants = staged.variants;
     const benchmark: Benchmark = {
       id: spec.id, name: spec.name, sourceId: `community/${spec.id}`, url: spec.url, description: spec.description,
       unit: spec.unit, higherIsBetter: spec.higherIsBetter, category: spec.category, lastUpdated: spec.lastUpdated,
@@ -115,7 +125,7 @@ export function loadCommunity(base: Snapshot, inputs: CommunityInput[], observed
     snap.benchmarks.push(benchmark);
     snap.observations.push(...observations);
     snap.sources = [...snap.sources, { sourceId: benchmark.sourceId, status: "ok", fetchedAt: observedAt, rowCount: observations.length, unknownLabels: [], rawPath: `community/${spec.id}/results.csv` }];
-    added.benchmarks++; added.observations += observations.length;
+    added.benchmarks++; added.observations += observations.length; added.models += addedModels;
   }
   return { snapshot: snap, issues, added };
 }

@@ -67,6 +67,10 @@ function Heading({ title, desc }: { title: string; desc?: ReactNode }) {
   return <div><h2 className="text-[22px]">{title}</h2>{desc && <p className="cap mt-1">{desc}</p>}</div>;
 }
 
+function FilterEmptyState({ reset }: { reset: () => void }) {
+  return <p className="cap py-6">The page filters hide every model for this chart. <button type="button" className="underline" onClick={reset}>Reset filters</button></p>;
+}
+
 const KindToggle = ({ bars, onChange, label }: { bars: boolean; onChange: (k: "bars" | "scatter") => void; label: string }) => (
   <div className="seg" role="group" aria-label={`${label} chart type`}>
     <button type="button" aria-pressed={!bars} title="Score vs metric" onClick={() => onChange("scatter")}><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><circle cx="4" cy="11" r="1.6" /><circle cx="8" cy="6" r="1.6" /><circle cx="12.5" cy="4" r="1.6" /><circle cx="10" cy="10" r="1.6" /></svg></button>
@@ -81,9 +85,8 @@ export function IndexBars({ title, desc, all, labs, limit = 30, more }: { title:
   const { f, release, ranked } = useScope();
   const rows = useMemo(() => ranked(all, mode), [ranked, all, mode]);
   const vis = useAllBars(useMemo(() => rows.map((r) => ({ x: r.score, r })), [rows]));
-  // The page filters can hide every model; say so and offer the way back instead of blaming the index.
-  if (!rows.length && f && !f.isDefault) return <><Heading title={title} desc={desc} /><p className="cap py-6">The page filters hide every model for this chart. <button type="button" className="underline" onClick={f.reset}>Reset filters</button></p></>;
-  return <Rankings ranked={vis.points.map((p) => p.r)} labs={labs} limit={limit} more={more} showEffort={mode === "all"} anchor={anchorOf(title)} title={<Heading title={title} desc={desc} />}
+  const emptyMessage = !vis.points.length && f && !f.isDefault ? <FilterEmptyState reset={f.reset} /> : undefined;
+  return <Rankings ranked={vis.points.map((p) => p.r)} labs={labs} limit={limit} more={more} showEffort={mode === "all"} anchor={anchorOf(title)} title={<Heading title={title} desc={desc} />} emptyMessage={emptyMessage}
     actions={<ChartSettings label={title} anchor={anchorOf(title)} mode={mode} onChange={setMode} view={view} onView={setView} {...release} {...vis.picker} />} />;
 }
 
@@ -111,12 +114,16 @@ export function MetricCard({ chart, title, desc, pts: allPts, labs, height = 420
     // Pricing basis: the cost bars read each row's cost, so re-price them with the page filter.
     return chart === "costBars" && f ? kept.flatMap((p) => { const c = f.priced(p.r as Priced).costUsd; return c ? [{ ...p, x: c }] : []; }) : kept;
   }, [points, allPts, chart, f]);
-  const pts = useMemo(() => (mode === "best" ? bestPoints(filtered) : filtered), [mode, filtered, def.better]);
+  const pts = useMemo(() => (mode === "best" ? bestPoints(filtered) : filtered), [mode, filtered]);
   const vis = useAllBars(pts);
   const actions = <>{def.scale !== "time" && <KindToggle bars={bars} onChange={(kind) => setView({ ...view, kind })} label={title} />}
     <ChartSettings label={title} anchor={anchor} mode={mode} onChange={setMode} view={view} onView={setView} defaultScale={def.scale === "log" ? "log" : undefined} {...release}
       costBasis={chart === "costBars" && f ? { value: f.basis, onChange: (b) => f.set({ basis: b }) } : undefined} {...(bars ? vis.picker : {})} /></>;
-  if (bars) return <MetricBars pts={vis.points} labs={labs} better={def.better} xName={def.barName ?? def.xName} formatValue={def.formatX} height={height} aria={def.aria.replace("Index score versus", "By model:")} title={<Heading title={title} desc={desc} />} actions={actions} anchor={anchor} exportName={title} labelScale={view.labelScale} bestFirst />;
+  if (bars) {
+    if (!vis.points.length && f && !f.isDefault) return <><Heading title={title} desc={desc} /><FilterEmptyState reset={f.reset} /></>;
+    return <MetricBars pts={vis.points} labs={labs} better={def.better} xName={def.barName ?? def.xName} formatValue={chart === "uptime" ? def.formatValue ?? def.formatX : def.formatX} formatAxis={chart === "uptime" ? def.formatX : undefined} coordinate={chart === "uptime" ? (p) => p.x : undefined} height={height} aria={def.aria.replace("Index score versus", "By model:")} title={<Heading title={title} desc={desc} />} actions={actions} anchor={anchor} exportName={title} labelScale={view.labelScale} bestFirst />;
+  }
+  if (!pts.length && f && !f.isDefault) return <><Heading title={title} desc={desc} /><FilterEmptyState reset={f.reset} /></>;
   return <ScoreScatter pts={pts} labs={labs} better={def.better} xName={def.xName} xShort={def.xShort} xUnit={def.xUnit} scale={def.scale} formatX={def.formatX} formatValue={def.formatValue} height={height} aria={def.aria} title={<Heading title={title} desc={desc} />} actions={actions} view={view} anchor={anchor} exportName={title} />;
 }
 
@@ -124,11 +131,12 @@ export function MetricCard({ chart, title, desc, pts: allPts, labs, height = 420
 export function BenchmarkBars({ title, desc, unit, higherIsBetter, pts: allPts, labs, limit = 24, anchor, more }: { title: string; desc?: ReactNode; unit: string; higherIsBetter: boolean; pts: MetricPoint[]; labs: Lab[]; height?: number; limit?: number; anchor?: string; more?: string | { href: string; label: string } }) {
   const [mode, setMode] = useState<"all" | "best">("best");
   const [view, setView] = useScatterView(`bench-${anchor ?? anchorOf(title)}`, "bars");
-  const { release, points } = useScope();
+  const { f, release, points } = useScope();
   const sorted = useMemo(() => (mode === "best" ? bestPoints(points(allPts), !higherIsBetter) : points(allPts)).slice().sort((a, b) => (higherIsBetter ? b.x - a.x : a.x - b.x)), [mode, points, allPts, higherIsBetter]);
   const vis = useAllBars(sorted);
   const rows = useMemo(() => vis.points.map((p, i) => ({ ...p.r, rank: i + 1 })), [vis.points]);
   const format = useMemo(() => unitFormats(unit), [unit]);
-  return <Rankings ranked={rows} labs={labs} limit={limit} more={more} format={format} showEffort={mode === "all"} anchor={anchor ?? anchorOf(title)} title={<Heading title={title} desc={desc} />}
+  const emptyMessage = !rows.length && f && !f.isDefault ? <FilterEmptyState reset={f.reset} /> : undefined;
+  return <Rankings ranked={rows} labs={labs} limit={limit} more={more} format={format} showEffort={mode === "all"} anchor={anchor ?? anchorOf(title)} title={<Heading title={title} desc={desc} />} emptyMessage={emptyMessage}
     actions={<ChartSettings label={title} anchor={anchor ?? anchorOf(title)} mode={mode} onChange={setMode} view={view} onView={setView} {...release} {...vis.picker} />} />;
 }

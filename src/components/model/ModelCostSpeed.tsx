@@ -70,7 +70,7 @@ function MetricCard({ m, ranked, mine, modelId, color }: { m: Metric; ranked: Ra
         <h3 className="text-[19px] leading-tight">{m.title}</h3>
         <span className="cap shrink-0">{rank === 1 ? `${m.word} of ${of}` : `#${rank} ${m.word} of ${of}`}</span>
       </div>
-      <p className="num text-[22px] leading-none" style={{ color: "var(--indigo)" }}>{m.fmt(head.v)}{effortOf(head.r) && <span className="cap ml-2 align-middle">at {effortOf(head.r)}</span>}</p>
+      <p className="num flex flex-wrap items-baseline gap-x-2 text-[22px] leading-tight" style={{ color: "var(--indigo)" }}><span>{m.fmt(head.v)}</span>{effortOf(head.r) && <span className="cap">at {effortOf(head.r)}</span>}</p>
       <FieldStrip field={field} mine={points} lead={lead} color={color} fmt={m.fmt} tick={m.tick} log={m.log} aria={`${m.title}: this model against ${of - 1} other models`} height={140} />
     </article>
   );
