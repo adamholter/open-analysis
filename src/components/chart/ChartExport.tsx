@@ -1,6 +1,6 @@
 "use client";
 import { track } from "@/lib/analytics";
-import { useImperativeHandle, useState, type Ref } from "react";
+import { useEffect, useImperativeHandle, useState, type Ref } from "react";
 import { useChartPalette } from "./echarts";
 import { escapeSvg, frameSvg } from "./export-frame";
 import { ChartDownloadIcon } from "./ChartIcons";
@@ -25,6 +25,13 @@ export function ChartExport({ name, getSvg, getRows, getHtml, frame, className =
   const pal = useChartPalette();
   const [busy, setBusy] = useState(false);
   const [open, setOpen] = useState(false);
+  // Open Analysis: Escape closes the format menu like every other popover on the page.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open]);
   const [error, setError] = useState("");
   function save(blob: Blob, ext: string) {
     const url = URL.createObjectURL(blob);
