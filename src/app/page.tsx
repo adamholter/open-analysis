@@ -59,7 +59,7 @@ export default function Home() {
               desc={<>Equal-weight average of {index.benchmarks.length} independent benchmarks: {index.benchmarks.map((b, n) => <span key={b.id}>{n ? ", " : ""}<Link href={`/benchmarks/${b.id}`}>{b.name}</Link></span>)} · Missing results may use peer estimates · Higher is better · <Link href="/methodology">Methodology</Link></>} />
           </div>
           <div className="chart-panel">
-            <CostChart title="Intelligence vs. Cost per Task" all={index.all} labs={L} desc="Open Index against measured cost per task, log scale by default (switch in settings). The shaded area is cheaper and smarter than the median." />
+            <CostChart title="Intelligence vs. Cost per Task" all={index.all} labs={L} desc="Open Index against measured cost per task. The shaded area is cheaper and smarter than the median." />
           </div>
           {tpt && <div className="chart-panel">
             <MetricCard chart="tpt" title="Intelligence vs. Time per Task" desc={tpt.desc} pts={tpt.points} labs={L} />
