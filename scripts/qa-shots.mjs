@@ -20,6 +20,7 @@ const browser = await chromium.launch();
 try {
 for (const scheme of ["light", "dark"]) for (const vp of [{ w: 1440, h: 900, tag: "desktop" }, { w: 390, h: 844, tag: "mobile" }]) {
   const ctx = await browser.newContext({ viewport: { width: vp.w, height: vp.h }, colorScheme: scheme });
+  await ctx.addInitScript((s) => localStorage.setItem("oa:theme", s), scheme);
   for (const path of PAGES) {
     if (vp.tag === "mobile" && !MOBILE.has(path)) continue;
     const p = await ctx.newPage();
@@ -42,14 +43,14 @@ for (const scheme of ["light", "dark"]) for (const vp of [{ w: 1440, h: 900, tag
     if (path === "/") {
       const more = p.getByRole("button", { name: /Show all \d+ benchmarks/ });
       if (await more.count()) { await more.first().click(); await p.waitForTimeout(1500); }
-      const tabs = p.locator("#capabilities .oa-chips [role=tab]");
+      const tabs = p.locator("#capabilities .oa-tabs [role=tab]");
       for (let i = 0; i < await tabs.count(); i++) {
         const label = await tabs.nth(i).innerText();
         await tabs.nth(i).click({ timeout: 5000 }); await p.waitForTimeout(600);
-        await shot(p.locator("#capabilities .chart-panel").first(), `capability tab ${label}`);
+        await shot(p.locator("#capabilities .oa-card").first(), `capability tab ${label}`);
       }
     }
-    const panels = p.locator(".chart-panel");
+    const panels = p.locator(".oa-card");
     for (let i = 0; i < await panels.count(); i++) {
       const panel = panels.nth(i);
       if (path === "/" && await panel.evaluate((el) => !!el.closest("#capabilities"))) continue;

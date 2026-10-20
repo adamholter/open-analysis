@@ -1,0 +1,12 @@
+{
+  "$comment": "Which benchmarks publish their questions. public: anyone can read the tasks. closed: the publisher keeps the scored tasks private (held-out or semi-private sets). Benchmarks not listed are unknown and match only the 'All' filter. Add entries by pull request with a link to where the publisher says so.",
+  "public": [
+    "aa-gpqa-diamond", "vals-gpqa", "epoch-gpqa-diamond",
+    "aa-mmlu-pro", "vals-mmlu-pro", "aa-humanitys-last-exam",
+    "aa-livecodebench", "vals-lcb", "aa-aime-2025", "vals-aime", "aa-math-500",
+    "aa-ifbench", "aa-scicode", "aa-tau2-bench", "terminalbench-2", "bsbench-v2"
+  ],
+  "closed": [
+    "simplebench", "frontiermath-tiers-1-3-v2", "arc-agi-2", "arc-agi-3"
+  ]
+}

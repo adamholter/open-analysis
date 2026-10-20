@@ -1,47 +1,37 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import type { Benchmark } from "@/data/types";
-import { OPEN_INDEX, benchmarkRows, snapshot } from "@/lib/data";
-import { publisherOf } from "@/lib/views";
-import { categoryLabel } from "@/lib/categories";
+import { OPEN_INDEX, benchmarkById, snapshot } from "@/lib/data";
+import { catalog, publisherOf } from "@/lib/views";
+import { categoryDescription, categoryLabel } from "@/lib/categories";
 
 export const metadata: Metadata = { title: "Benchmarks" };
 
-function Table({ list, inIndex }: { list: { b: Benchmark; n: number }[]; inIndex: Set<string> }) {
-  return (
-    <div className="chart-panel oa-scroll">
-      <table className="oa-table">
-        <thead><tr><th>Benchmark</th><th>Category</th><th>Publisher</th><th className="num">Models</th><th className="oa-hide-sm">Updated</th></tr></thead>
-        <tbody>
-          {list.map(({ b, n }) => (
-            <tr key={b.id}>
-              <td><Link href={`/benchmarks/${b.id}`}>{b.name}</Link>{b.community && <span className="oa-badge">community</span>}{inIndex.has(b.id) && <span className="oa-badge">in index</span>}</td>
-              <td>{categoryLabel(b.category)}</td>
-              <td>{publisherOf(b)}</td>
-              <td className="num">{n}</td>
-              <td className="oa-hide-sm">{b.lastUpdated ?? "–"}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
+/** Benchmarks without one picked: what is here, and the index benchmarks to start from. */
 export default function Benchmarks() {
-  const snap = snapshot();
-  const inIndex = new Set(OPEN_INDEX.benchmarks.map((b) => b.id));
-  const list = snap.benchmarks.map((b) => ({ b, n: benchmarkRows(b.id).length })).filter((x) => x.n > 0)
-    .sort((x, y) => Number(inIndex.has(y.b.id)) - Number(inIndex.has(x.b.id)) || categoryLabel(x.b.category).localeCompare(categoryLabel(y.b.category)) || x.b.name.localeCompare(y.b.name));
-  return (
-    <div className="oa-body no-side">
-      <main className="oa-main">
-        <section className="oa-section">
-          <h2>Benchmarks</h2>
-          <p className="lede">{list.length} benchmarks: public ones collected from their publishers every two hours, and {list.filter((x) => x.b.community).length} submitted by their authors. <Link href="/contribute" className="underline">Add yours</Link>.</p>
-          <Table list={list} inIndex={inIndex} />
-        </section>
-      </main>
+  const cat = catalog();
+  const counts = new Map<string, number>();
+  for (const b of cat.benchmarks) counts.set(b.category, (counts.get(b.category) ?? 0) + 1);
+  const community = cat.benchmarks.filter((b) => b.community).length;
+  return <>
+    <section className="oa-bhead">
+      <h1>Benchmarks</h1>
+      <p>{cat.benchmarks.length} benchmarks with results: collected from their publishers every two hours, and {community} added by their authors. Pick one on the left to see every result, what a run costs, and where it was published. <Link href="/contribute">Add yours</Link>.</p>
+    </section>
+    <div className="oa-card">
+      <div className="oa-chead"><div className="oa-ctitle"><h3>In the Open Index</h3><p>The {OPEN_INDEX.benchmarks.length} benchmarks the index averages</p></div></div>
+      <div className="oa-blist">
+        {OPEN_INDEX.benchmarks.map((x) => { const b = benchmarkById(x.id); return b && (
+          <Link key={b.id} href={`/benchmarks/${b.id}`} className="oa-bitem" title={b.description}><b>{b.name}</b><small>{publisherOf(b)} · {categoryLabel(b.category)}</small><span>{b.description}</span></Link>); })}
+      </div>
     </div>
-  );
+    <div className="oa-card">
+      <div className="oa-chead"><div className="oa-ctitle"><h3>By category</h3><p>What each group measures</p></div></div>
+      <div className="oa-blist">
+        {[...counts.entries()].sort((a, b) => b[1] - a[1]).map(([c, n]) => (
+          <div key={c} className="oa-bitem"><b>{categoryLabel(c)}</b><small>{n} benchmarks</small><span>{categoryDescription(c)}</span></div>
+        ))}
+      </div>
+    </div>
+    <p className="oa-muted">Data as of {snapshot().date}.</p>
+  </>;
 }

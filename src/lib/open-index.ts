@@ -9,7 +9,7 @@ export function openIndexConfig(): IndexConfig {
     weights: Object.fromEntries(openIndex.benchmarks.map((b) => [b.id, b.weight])),
     required: [], cutoff: 5, strictness: openIndex.strictness, estimateMissing: true,
     variants: "all", rankingVariants: "best", paretoVariants: "all",
-    // Subscription pricing by default, like Priors; charts can switch to API list prices.
-    costBasis: "subscription",
+    // API list prices. Subscription pricing (share of a plan per task) is parked for later.
+    costBasis: "api",
   };
 }

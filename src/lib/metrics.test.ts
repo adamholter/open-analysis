@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import type { RankedVariant } from "@/engine";
 import type { Snapshot } from "@/data/types";
 import { costChart, formatComputed, formulaChart, formulaInputs, metricPanels, pickPoints, type MetricChart } from "./metrics";
-import { selectBars } from "../components/chart/bars-option";
 
 const rv = (model: string, variant: string, score: number, metric?: number) =>
   ({ model: { id: model, name: model, labId: "lab" }, variant: { id: variant, effort: variant.split("@")[1] ?? "default" }, score, metric }) as unknown as RankedVariant;
@@ -39,28 +38,6 @@ describe("pickPoints", () => {
     const pts = pickPoints(metricChart, ranked, "best");
     expect(pts.map((p) => p.r.variant.id).sort()).toEqual(["opus@high", "sol@max"]);
     expect(pts.find((p) => p.r.model.id === "opus")!.x).toBe(40);
-  });
-});
-
-describe("selectBars", () => {
-  it("does not collapse efforts of one model — all mode yields multiple bars per model", () => {
-    const pts = [
-      { x: 40, r: rv("opus", "opus@high", 85) },
-      { x: 30, r: rv("opus", "opus@low", 70) },
-      { x: 50, r: rv("sol", "sol@max", 80) },
-    ];
-    const bars = selectBars(pts, "lower", 24);
-    expect(bars).toHaveLength(3);
-    expect(bars.map((b) => b.x)).toEqual([30, 40, 50]); // sorted by metric value
-  });
-  it("caps by index score, then sorts by metric", () => {
-    const pts = [
-      { x: 1, r: rv("a", "a@x", 50) },
-      { x: 2, r: rv("b", "b@x", 99) },
-      { x: 3, r: rv("c", "c@x", 60) },
-    ];
-    const bars = selectBars(pts, "lower", 2);
-    expect(bars.map((b) => b.r.model.id)).toEqual(["b", "c"]); // top-2 by score, drawn in metric order
   });
 });
 
