@@ -56,30 +56,6 @@ export function benchmarkRows(benchmarkId: string): BenchmarkRow[] {
 
 
 
-/**
- * The snapshot minus what model pages never read (source URLs, notes, AA metadata blobs), served once as a static file
- * at /data/snapshot-lite.json and shared by every model page instead of being embedded in each of them.
- */
-export function liteSnapshot(): Snapshot {
-  const snap = snapshot();
-  const keepDetails = new Set(["estimatedDecodeSecondsPerTask", "outputTokensPerTask", "priorsEstimate", "window"]);
-  // Radar axes print `shortName ?? name`; drop trailing "(Vals)"-style qualifiers so long names fit around the chart.
-  const benchmarks = snap.benchmarks.map((b) => { if (b.shortName) return b; const short = b.name.replace(/\s*\([^)]*\)\s*$/, ""); return short !== b.name && short.length >= 4 ? { ...b, shortName: short } : b; });
-  return {
-    ...snap,
-    benchmarks,
-    sources: [],
-    series: [],
-    variants: snap.variants.map((v) => ({ ...v, sourceModels: undefined, sourceModel: v.sourceModel ? { id: v.sourceModel.id, slug: v.sourceModel.slug, name: v.sourceModel.name, url: "" } : undefined })),
-    observations: snap.observations.map((o) => {
-      const details = o.details && Object.fromEntries(Object.entries(o.details).filter(([k]) => keepDetails.has(k)));
-      return { benchmarkId: o.benchmarkId, variantId: o.variantId, value: o.value, observedAt: "", sourceUrl: "",
-        ...(o.costUsd != null ? { costUsd: o.costUsd } : {}), ...(o.durationSec != null ? { durationSec: o.durationSec } : {}), ...(o.outputTokens != null ? { outputTokens: o.outputTokens } : {}),
-        ...(details && Object.keys(details).length ? { details } : {}) };
-    }),
-  };
-}
-
 export interface ModelFacts { creator?: string; openWeights?: boolean; license?: string; paramsB?: number; activeParamsB?: number; contextTokens?: number; priceInPerM?: number; priceOutPerM?: number }
 
 /** What Artificial Analysis publishes about a model itself (licensing, size, context window, list price). */

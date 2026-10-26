@@ -12,6 +12,7 @@ for (const w of [1440, 1000, 390]) {
   const seen = {};
   for (const scheme of ["light", "dark"]) {
     const ctx = await browser.newContext({ viewport: { width: w, height: 900 }, colorScheme: scheme });
+    await ctx.addInitScript((s) => localStorage.setItem("oa:theme", s), scheme);
     for (const path of PAGES) {
       const p = await ctx.newPage();
       const errs = [];
@@ -23,8 +24,8 @@ for (const w of [1440, 1000, 390]) {
       if (await more.count()) { await more.first().click(); await p.waitForTimeout(1200); }
       const r = await p.evaluate(() => ({
         overflow: document.documentElement.scrollWidth > innerWidth + 1,
-        scrollers: [...document.querySelectorAll("*")].filter((e) => { const s = getComputedStyle(e); return (s.overflowX === "auto" || s.overflowX === "scroll") && e.scrollWidth > e.clientWidth + 2 && !e.closest(".oa-scroll") && !e.closest(".oa-nav"); }).length,
-        panels: [...document.querySelectorAll(".chart-panel")].map((e) => { const t = e.querySelector("h2")?.textContent ?? "?"; const c = e.querySelector("[role=img]"); return `${t}|${c ? Math.round(c.getBoundingClientRect().width) : 0}|${e.querySelector("p.cap:last-of-type")?.textContent?.match(/Top \d+ of \d+/)?.[0] ?? ""}`; }),
+        scrollers: [...document.querySelectorAll("*")].filter((e) => { const s = getComputedStyle(e); return (s.overflowX === "auto" || s.overflowX === "scroll") && e.scrollWidth > e.clientWidth + 2 && !e.closest(".oa-scroll") && !e.closest(".oa-nav") && !e.closest(".oa-chscroll") && !e.closest(".oa-bllist") && !e.closest(".oa-pscroll"); }).length,
+        panels: [...document.querySelectorAll(".oa-card")].map((e) => { const t = e.querySelector("h3")?.textContent ?? "?"; const c = e.querySelector("[role=img]"); return `${t}|${c ? Math.round(c.getBoundingClientRect().width) : 0}|${c?.querySelectorAll(".oa-bar").length ?? 0}`; }),
       }));
       if (r.overflow) problems.push(`${scheme} ${w} ${path}: page overflows horizontally`);
       if (r.scrollers) problems.push(`${scheme} ${w} ${path}: ${r.scrollers} scroll box(es)`);

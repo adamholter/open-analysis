@@ -1,58 +1,78 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { CopyBlock } from "@/components/oa/CopyBlock";
 import { REPO } from "@/lib/site";
+import { categoryLabel } from "@/lib/categories";
 
 export const metadata: Metadata = { title: "Add a benchmark" };
 
-const SPEC = `{
-  "id": "my-bench",
-  "name": "My Bench",
-  "description": "What a model has to do, and how it is scored.",
-  "url": "https://my-bench.example.com",
-  "maintainer": "Your Name",
-  "category": "reasoning",
-  "unit": "percent",
-  "higherIsBetter": true,
-  "lastUpdated": "2026-10-15"
-}`;
+const CATEGORIES = ["coding", "agentic", "reasoning", "knowledge", "math", "long-context", "instruction", "creative", "safety", "economics", "other"];
 
-const CSV = `model,effort,score,cost_usd,duration_sec,harness,source_url
-claude-opus-5.5,xhigh,43.0,0.19,103,Claude Code,https://example.com/run-1
-gpt-6.1-sol,high,23.0,0.008,29,Codex,
-gemini-4,medium,43.0,0.023,33,,https://example.com/run-3`;
+const PROMPT = `Add my benchmark to Open Analysis as a community benchmark.
+
+Repository: ${REPO}
+Read CONTRIBUTING.md and look at community/hearing-bench/ as a complete example before you start.
+
+My benchmark:
+- Name: <name>
+- Public page that explains the tasks and the scoring: <url>
+- Maintainer (my name): <name>
+- What a model has to do and how it is scored: <one or two sentences>
+- Results: <paste a table, attach a file, or give a link>
+
+Do this:
+1. Fork and clone the repository, then run \`npm install\`.
+2. Pick an id: lowercase letters, digits and dashes (for example "my-bench"). Create the folder community/<id>/.
+3. Write community/<id>/benchmark.json:
+   {
+     "id": "<id>",
+     "name": "<display name>",
+     "description": "<what a model has to do, and how it is scored>",
+     "url": "<public page>",
+     "maintainer": "<my name>",
+     "category": "<one of: ${CATEGORIES.join(", ")}>",
+     "unit": "<percent | score | elo | usd | seconds | count>",
+     "higherIsBetter": true,
+     "lastUpdated": "<YYYY-MM-DD of the latest results>"
+   }
+   - "id" must equal the folder name.
+   - unit "score" also needs "scale": { "min": <min>, "max": <max> }.
+   - Optional "costNote": how cost_usd was priced.
+4. Write community/<id>/results.csv with this header:
+   model,effort,score,cost_usd,duration_sec,harness,source_url
+   - model: a model id as used on the site (a model page's address ends in /models/<id>); common names usually match too.
+   - effort: none, minimal, low, medium, high, xhigh or max. Leave it blank if no level was set; the model's highest level is assumed.
+   - score: required. cost_usd and duration_sec are per task, optional, never negative. harness and source_url are optional.
+   - One row per model and effort. Only complete runs. No copies of other leaderboards.
+5. Run \`npm run check:community\`. Fix every error it reports (unknown models, duplicate rows, out-of-range scores) until it passes. If a model is not recognized, keep the row out and list it in the pull request.
+6. Open a pull request titled "Add <name> benchmark". In the description: the public page, how the runs were done (harness, dates, settings), and any model you left out.
+
+Do not edit open-index.json; joining the Open Index is a separate pull request.`;
 
 export default function Contribute() {
   return (
     <div className="oa-body no-side">
-    <main className="oa-main">
-      <section className="oa-prose">
-        <h1>Add a benchmark</h1>
-        <p className="oa-lede">A community benchmark is a folder with two files. Open a pull request and it appears on the site once checks pass and a maintainer merges it.</p>
-        <h2>1. <code>community/my-bench/benchmark.json</code></h2>
-        <pre><code>{SPEC}</code></pre>
-        <p>Categories: coding, agentic, reasoning, knowledge, math, long-context, instruction, creative (shown as 3D), safety (shown as Cyber), economics (shown as Professional), other. Units: percent, score (add <code>&quot;scale&quot;: {"{"}&quot;min&quot;: 0, &quot;max&quot;: 10{"}"}</code>), elo, usd, seconds, count.</p>
-        <h2>2. <code>community/my-bench/results.csv</code></h2>
-        <pre><code>{CSV}</code></pre>
-        <ul>
-          <li><b>model</b>: an id from the <Link href="/models">models page</Link>. Common names like &quot;Claude Opus 5.5&quot; also work.</li>
-          <li><b>effort</b>: none, minimal, low, medium, high, xhigh or max. Leave it blank if you didn&apos;t set one; the model&apos;s highest effort is assumed.</li>
-          <li><b>score</b> is required. <b>cost_usd</b> (per task), <b>duration_sec</b> (per task) and <b>harness</b> are optional; cost and duration can&apos;t be negative.</li>
-          <li><b>source_url</b>: a link to this result&apos;s source, optional. If blank, the benchmark&apos;s <code>url</code> is used.</li>
-          <li>Blank cells are ignored. <code>model</code> and <code>score</code> are required; blank effort uses the model&apos;s highest known effort. Blank cost, duration and harness are omitted.</li>
-          <li>One row per model and effort. Only publish complete runs.</li>
-        </ul>
-        <h2>3. Check it</h2>
-        <pre><code>npm install{"\n"}npm run check:community</code></pre>
-        <p>The same check runs on every pull request. It reports unknown models, duplicate rows and out-of-range scores by line number.</p>
-        <h2>What gets accepted</h2>
-        <ul>
-          <li>A public page explaining the task and scoring, linked in <code>url</code>.</li>
-          <li>Results you ran yourself or that your benchmark publishes. No copies of other leaderboards.</li>
-          <li>Joining the Open Index is a separate pull request to <code>open-index.json</code>, decided on coverage and how much the benchmark adds.</li>
-        </ul>
-        <p><a className="oa-cta" href={`${REPO}/tree/main/community`}>Browse community benchmarks on GitHub</a></p>
-      </section>
-    </main>
+      <main className="oa-main">
+        <section className="oa-bhead">
+          <h1>Add a benchmark</h1>
+          <p>A community benchmark is one folder with two files: a short description and a CSV of results. The fastest way: paste this prompt into your coding agent (Claude Code, Codex, Cursor…), fill in the five lines at the top, and let it open the pull request.</p>
+        </section>
+        <CopyBlock text={PROMPT} />
+        <article className="oa-prose">
+          <h2>What the agent makes</h2>
+          <p><code>community/&lt;id&gt;/benchmark.json</code> describes the benchmark; <code>community/&lt;id&gt;/results.csv</code> holds one row per model and reasoning level. The full rules are in <a href={`${REPO}/blob/main/CONTRIBUTING.md`}>CONTRIBUTING.md</a>, and <a href={`${REPO}/tree/main/community/hearing-bench`}>Hearing Bench</a> is a complete example.</p>
+          <h3>Categories</h3>
+          <p>{CATEGORIES.map((c) => `${c} (${categoryLabel(c)})`).join(", ")}.</p>
+          <h2>What gets accepted</h2>
+          <ul>
+            <li>A public page that explains the tasks and the scoring, linked in <code>url</code>.</li>
+            <li>Results you ran yourself or that your benchmark publishes. No copies of other leaderboards.</li>
+            <li>The same check runs on every pull request; a maintainer merges it, and it appears with a Community badge.</li>
+            <li>Joining the Open Index is a separate pull request to <code>open-index.json</code>, decided on coverage and how much the benchmark adds.</li>
+          </ul>
+          <p>Prefer to do it by hand? Run <code>npm install</code> and <code>npm run check:community</code> after adding the two files. <Link href="/methodology#community">How community benchmarks are shown</Link>.</p>
+        </article>
+      </main>
     </div>
   );
 }

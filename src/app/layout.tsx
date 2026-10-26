@@ -1,23 +1,22 @@
 import type { Metadata } from "next";
-import { Source_Serif_4 } from "next/font/google";
-import localFont from "next/font/local";
+import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
 import { Shell, THEME_SCRIPT, ThemeToggle } from "@/components/oa/Shell";
+import { SelectionProvider } from "@/components/oa/Selection";
+import { GlobalSearch } from "@/components/oa/GlobalSearch";
+import { Nav } from "@/components/oa/Nav";
+import { IconBrandGithub, IconPlus } from "@tabler/icons-react";
 import { snapshot } from "@/lib/data";
-import { openIndexView } from "@/lib/views";
+import { catalog } from "@/lib/views";
 import { REPO } from "@/lib/site";
 import "./globals.css";
 
-const switzer = localFont({ variable: "--font-switzer", display: "swap", src: [
-  { path: "./fonts/switzer-400.woff2", weight: "400", style: "normal" },
-  { path: "./fonts/switzer-500.woff2", weight: "500", style: "normal" },
-  { path: "./fonts/switzer-600.woff2", weight: "600", style: "normal" },
-] });
-const sourceSerif = Source_Serif_4({ variable: "--font-source-serif", subsets: ["latin"] });
+const geist = Geist({ variable: "--font-geist", subsets: ["latin"] });
+const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: { default: "Open Analysis", template: "%s · Open Analysis" },
-  description: "Open-source AI model rankings built from public and community benchmarks.",
+  description: "Compare AI models on every public benchmark: Artificial Analysis, labs, researchers and the community, in one place.",
 };
 
 function Logo() {
@@ -26,35 +25,34 @@ function Logo() {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const snap = snapshot();
-  const colors = new Map(snap.labs.map((l) => [l.id, l.color]));
-  const models = openIndexView().best.map((r) => ({ id: r.model.id, name: r.model.name, color: colors.get(r.model.labId) }));
   return (
-    <html lang="en" className={`${switzer.variable} ${sourceSerif.variable}`} suppressHydrationWarning>
+    <html lang="en" className={`${geist.variable} ${geistMono.variable}`} suppressHydrationWarning>
       <body>
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
-        <Shell models={models}>
-          <header className="oa-header">
-            <div className="oa-header-in">
-              <Link href="/" className="oa-logo"><Logo />Open Analysis</Link>
-              <nav className="oa-nav" aria-label="Main">
-                <Link href="/">Leaderboards</Link>
-                <Link href="/models">Models</Link>
-                <Link href="/benchmarks">Benchmarks</Link>
-                <Link href="/methodology">Methodology</Link>
-                <a href={REPO}>GitHub</a>
-              </nav>
-              <div className="oa-header-end"><ThemeToggle /><Link href="/contribute" className="oa-cta">Add a benchmark</Link></div>
-            </div>
-          </header>
-          {children}
-          <footer className="oa-footer">
-            <div>
-              <span>Data as of {snap.date}</span>
-              <a href={REPO}>Source on GitHub</a>
-              <a href="https://mypriors.com">Build your own index on Priors</a>
-              <span>MIT licensed. Benchmark results belong to their publishers.</span>
-            </div>
-          </footer>
+        <Shell>
+          <SelectionProvider catalog={catalog()}>
+            <header className="oa-header">
+              <div className="oa-header-in">
+                <Link href="/" className="oa-logo"><Logo />Open Analysis</Link>
+                <Nav />
+                <div className="oa-header-end">
+                  <GlobalSearch />
+                  <ThemeToggle />
+                  <a href={REPO} className="oa-ibtn" aria-label="Source on GitHub" title="Source on GitHub"><IconBrandGithub size={17} stroke={1.6} /></a>
+                  <Link href="/contribute" className="oa-cta"><IconPlus size={15} stroke={2} aria-hidden="true" />Add a benchmark</Link>
+                </div>
+              </div>
+            </header>
+            {children}
+            <footer className="oa-footer">
+              <div>
+                <span>Data as of {snap.date}</span>
+                <Link href="/methodology">How the numbers are made</Link>
+                <a href={REPO}>Source on GitHub</a>
+                <span>MIT licensed. Benchmark results belong to their publishers.</span>
+              </div>
+            </footer>
+          </SelectionProvider>
         </Shell>
       </body>
     </html>
